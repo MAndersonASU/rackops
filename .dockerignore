@@ -1,0 +1,5 @@
+*
+!requirements.lock
+!pyproject.toml
+!src
+!src/**

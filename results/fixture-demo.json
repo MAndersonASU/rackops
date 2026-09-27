@@ -1,0 +1,34 @@
+{
+  "execution_mode": "fixture",
+  "benchmark_eligible": false,
+  "scenario": "bad_dependency_configuration",
+  "healthy": {
+    "requests": 2,
+    "successes": 2,
+    "success_rate": 1.0,
+    "p95_latency_ms": 8.017,
+    "latency_limit_ms": 500,
+    "passed": true
+  },
+  "fault": {
+    "requests": 2,
+    "successes": 0,
+    "success_rate": 0.0,
+    "p95_latency_ms": 1.513,
+    "latency_limit_ms": 500,
+    "passed": false
+  },
+  "alive_during_fault": true,
+  "ready_during_fault": false,
+  "repair": "restore fixture connection from configuration history",
+  "recovered": {
+    "requests": 2,
+    "successes": 2,
+    "success_rate": 1.0,
+    "p95_latency_ms": 1.423,
+    "latency_limit_ms": 500,
+    "passed": true
+  },
+  "metrics_visible": true,
+  "passed": true
+}

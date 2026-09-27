@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rackops-lab
+  labels:
+    rackops.io/lab: rackops
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: redis}
+  template:
+    metadata:
+      labels: {app: redis, rackops.io/lab: rackops}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: redis
+          image: redis:7.4.7-alpine
+          args: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+          ports: [{containerPort: 6379}]
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          readinessProbe:
+            exec: {command: ["redis-cli", "ping"]}
+            periodSeconds: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+spec:
+  selector: {app: redis}
+  ports: [{port: 6379, targetPort: 6379}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rackops-api
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  # Recreate makes the first bad-config incident an actual outage. Revisit and
+  # document strategy per scenario before adding the failed-rollout experiment.
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: rackops-api}
+  template:
+    metadata:
+      labels: {app: rackops-api, rackops.io/lab: rackops}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001}
+      containers:
+        - name: api
+          image: rackops-api:dev
+          imagePullPolicy: Never
+          env:
+            - {name: RACKOPS_REDIS_HOST, value: redis}
+            - {name: RACKOPS_REDIS_PORT, value: "6379"}
+          ports: [{containerPort: 8000, name: http}]
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {cpu: 500m, memory: 192Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: ["ALL"]}
+          livenessProbe:
+            httpGet: {path: /livez, port: http}
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 2
+            failureThreshold: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rackops-api
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+spec:
+  selector: {app: rackops-api}
+  ports: [{port: 8000, targetPort: 8000, name: http}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s
+    scrape_configs:
+      - job_name: rackops-api
+        static_configs:
+          - targets: ['rackops-api:8000']
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: prometheus}
+  template:
+    metadata:
+      labels: {app: prometheus, rackops.io/lab: rackops}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.5.0
+          args: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=1h", "--storage.tsdb.retention.size=128MB"]
+          ports: [{containerPort: 9090}]
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus}
+            - {name: data, mountPath: /prometheus}
+          readinessProbe:
+            httpGet: {path: /-/ready, port: 9090}
+      volumes:
+        - name: config
+          configMap: {name: prometheus-config}
+        - name: data
+          emptyDir: {sizeLimit: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+spec:
+  selector: {app: prometheus}
+  ports: [{port: 9090, targetPort: 9090}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: health-probe
+  namespace: rackops-lab
+  labels: {rackops.io/lab: rackops}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: health-probe}
+  template:
+    metadata:
+      labels: {app: health-probe, rackops.io/lab: rackops, rackops.io/role: health-probe}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: probe
+          image: rackops-api:dev
+          imagePullPolicy: Never
+          command: ["python", "-m", "rackops.loadgen"]
+          resources:
+            requests: {cpu: 25m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}

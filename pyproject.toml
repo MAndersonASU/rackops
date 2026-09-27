@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rackops"
+version = "0.1.0"
+description = "A local incident-response experiment with independently verified recovery"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.141.1",
+  "redis==8.1.0",
+  "prometheus-client==0.26.0",
+  "uvicorn==0.54.0",
+  "httpx==0.28.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "ruff==0.16.9", "fakeredis==2.38.0", "PyYAML==6.0.3"]
+
+[project.scripts]
+rackops = "rackops.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

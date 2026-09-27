@@ -1,0 +1,37 @@
+name: deterministic checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-dev.lock
+      - run: python -m pip install --no-deps -e .
+      - run: python -m ruff check .
+      - run: python -m ruff format --check .
+      - run: python -m pytest -q
+      - run: rackops demo-fixture
+  kind-smoke:
+    # Manual until the lab integration has been validated; no API keys or paid calls.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: helm/kind-action@v1
+        with:
+          install_only: true
+      - run: python -m pip install -r requirements.lock
+      - run: python -m pip install --no-deps -e .
+      - run: rackops lab up
+      - run: rackops lab inject
+      - run: rackops lab recover
+      - if: always()
+        run: rackops lab down
