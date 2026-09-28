@@ -77,6 +77,12 @@ def main() -> None:
         action="append",
         choices=["bad_redis_host", "bad_service_port", "bad_image", "redis_outage", "healthy"],
     )
+    evaluate.add_argument(
+        "--strategy",
+        choices=["runbook", "basic", "structured"],
+        default="runbook",
+        help="Hosted strategies require the explicit provider environment in .env.example",
+    )
     for command in ("smoke", "verify"):
         child = sub.add_parser(command)
         child.add_argument("--url", type=local_url, default="http://127.0.0.1:8000")
@@ -125,7 +131,9 @@ def main() -> None:
         elif args.command == "evaluate-dev":
             from rackops.experiment import run_development
 
-            result = run_development(Path("results/raw/development.jsonl"), args.scenario)
+            result = run_development(
+                Path("results/raw/development.jsonl"), args.scenario, args.strategy
+            )
         elif args.command == "lab":
             from rackops.lab import run
 

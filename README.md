@@ -3,7 +3,9 @@
 An evidence-grounded incident-response experiment for a disposable local
 Kubernetes lab. **Work in progress:** all three repairable fault families,
 unsupported escalation, and healthy no-op passed in one real GitHub Actions
-kind smoke. The LLM comparison and held-out benchmark are unfinished.
+kind smoke. A hosted-provider path now exists for the two LLM strategies, but
+it has only offline transport tests. The LLM comparison and held-out benchmark
+are unfinished.
 
 The application stores short-lived values in Redis. The checker sends real
 writes and reads and checks exact responses. The intended question is whether
@@ -17,13 +19,13 @@ flowchart LR
     Probe[Independent request checker] -->|write / read| API
     API --> Redis[Disposable Redis]
     Prometheus -->|scrape metrics| API
-    Agent[Restricted runbook Job] -.->|bounded observations and repairs| API
+    Agent[Restricted runbook or hosted-agent Job] -.->|bounded observations and repairs| API
 ```
 
 The coding assistant building this repository is different from the runtime
-agent being evaluated. The basic and structured loops currently use a scripted
-fake provider for offline tests; no hosted model has run. The operator CLI
-invokes Docker/kubectl and must never become an LLM tool.
+agent being evaluated. The basic and structured loops have scripted provider
+tests and a bounded OpenAI Responses transport; no hosted model has run. The
+operator CLI invokes Docker/kubectl and must never become an LLM tool.
 
 ## Run the tested fixture demo
 
@@ -60,7 +62,7 @@ environment where you work. The fixture demo reports `execution_mode: fixture`
 and `benchmark_eligible: false`: healthy requests succeed, the injected dependency
 failure fails, and restoring configuration makes requests succeed again.
 
-## Real Kubernetes lab: implementation awaiting integration testing
+## Real Kubernetes lab
 
 A **cluster** runs container workloads. A **Deployment** maintains application
 Pods (running containers); a **Service** gives clients a stable address.
@@ -89,7 +91,8 @@ development scenarios serially using the runbook. Repeat `--scenario NAME` to
 select cases. It resets between attempts, performs a fresh 60-second trusted
 request check after the Job, and writes JSONL to ignored
 `results/raw/development.jsonl`.
-This command is not a held-out benchmark and has not yet passed a live CI run.
+This command is not a held-out benchmark. Its first three-case CI execution
+completed with 2/3 passing; the next run emits per-case details for diagnosis.
 
 `up` creates only the `rackops` cluster and refuses to adopt an existing one.
 `inject` accepts `--scenario bad_redis_host`, `bad_service_port`, `bad_image`,
@@ -126,7 +129,36 @@ kubectl --context kind-rackops -n rackops-lab port-forward --address 127.0.0.1 s
 Open `http://127.0.0.1:9090` and query
 `sum(rate(rackops_http_requests_total{route="/items/{key}"}[1m]))`.
 Logs and Kubernetes events are available through ordinary operator kubectl
-commands; bounded runtime-agent observation tools are still to be implemented.
+commands. Runtime observation is bounded by the in-cluster adapter and gateway.
+
+## Hosted basic and structured development runs
+
+Hosted execution uses the OpenAI Responses API with `store: false`, a strict
+JSON schema, one bounded decision call per attempt, and the same restricted
+gateway and service account as the runbook. The trusted runner injects a
+short-lived Secret into the Job and deletes it afterward; the agent Role cannot
+read Kubernetes Secrets or access scenario truth. See the official
+[Responses API](https://developers.openai.com/api/reference/cli/resources/responses/methods/create),
+[Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs),
+and [current pricing](https://developers.openai.com/api/docs/pricing).
+
+RackOps reads the six explicit settings in `.env.example` from the process
+environment. It does not automatically read a `.env` file. Select a model that
+supports strict Structured Outputs, supply its current standard input/output
+prices per million tokens, and set the maximum total USD for one command. An
+incorrect price setting makes the cap inaccurate, so verify prices immediately
+before a run. Never commit or paste the API key into results or command arguments.
+
+```text
+rackops evaluate-dev --strategy basic --scenario healthy
+rackops evaluate-dev --strategy structured --scenario bad_redis_host
+```
+
+The cap reserves every allowed retry before the first request. Returned token
+usage and its priced cost are recorded. An ambiguous retry is conservatively
+charged at its full reservation and marked as an incomplete cost observation; a
+failed Job with unknown usage stops subsequent calls. These are development
+runs and remain benchmark-ineligible. Zero paid calls have been made so far.
 
 ## Verification and limitations
 
@@ -137,8 +169,8 @@ python -m pytest -q
 ```
 
 Tests cover exact response checking, wrong repairs, dependency failures,
-malformed input, metrics cardinality, operator recovery guards, and fake-provider
-strategy decisions. A transport
+malformed input, metrics cardinality, operator recovery guards, fake-provider
+strategy decisions, hosted schema validation, and pre-request cost limits. A transport
 test exercises real HTTP and redis-py sockets against **simulated Redis**; it is
 not a real Redis integration test. [Results](docs/results.md) report actual checks.
 

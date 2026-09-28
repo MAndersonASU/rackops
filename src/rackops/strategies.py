@@ -1,9 +1,9 @@
-"""Offline strategy loops. Hosted-model transport remains a later milestone."""
+"""Basic and structured runtime strategy loops."""
 
 from dataclasses import asdict, dataclass
 from typing import Protocol
 
-from rackops.gateway import Gateway, PolicyDenied
+from rackops.gateway import Evidence, Gateway, PolicyDenied
 from rackops.runbook import Decision, Observations
 
 
@@ -21,7 +21,7 @@ class Intent:
 class Provider(Protocol):
     model_id: str
 
-    def choose(self, observed: Observations) -> Intent: ...
+    def choose(self, observed: Observations, evidence: tuple[Evidence, ...] = ()) -> Intent: ...
 
 
 class FakeProvider:
@@ -33,7 +33,7 @@ class FakeProvider:
         self.intents = list(intents)
         self.index = 0
 
-    def choose(self, observed: Observations) -> Intent:
+    def choose(self, observed: Observations, evidence: tuple[Evidence, ...] = ()) -> Intent:
         if self.index >= len(self.intents):
             return Intent("escalate", "unknown", "Scripted fixture exhausted")
         intent = self.intents[self.index]
@@ -63,7 +63,7 @@ def _repair(gateway: Gateway, intent: Intent, references: tuple[str, ...]) -> De
 
 def basic(gateway: Gateway, observed: Observations, provider: Provider) -> Decision:
     """One plain observe/act turn. Outer gateway safety still applies."""
-    intent = provider.choose(observed)
+    intent = provider.choose(observed, tuple(gateway.evidence.values()))
     if intent.choice == "healthy":
         return Decision("claimed_healthy", intent.root_cause, observed.evidence_ids)
     if intent.choice == "escalate":
@@ -80,7 +80,7 @@ def basic(gateway: Gateway, observed: Observations, provider: Provider) -> Decis
 def structured(gateway: Gateway, observed: Observations, provider: Provider) -> Decision:
     """Require explicit evidence and state checks before proposing a repair."""
     gateway.record("state", {"name": "observe"})
-    intent = provider.choose(observed)
+    intent = provider.choose(observed, tuple(gateway.evidence.values()))
     gateway.record("state", {"name": "hypothesis", "summary": intent.decision})
     refs = intent.evidence_ids
     if (

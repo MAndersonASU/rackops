@@ -3,8 +3,10 @@
 A five-case development smoke passed in GitHub Actions kind on 2026-09-28 UTC.
 It is not the holdout below. A trusted serial runner now implements separate
 setup, agent, independent request check, and reset records for the runbook,
-but that runner itself still needs a live CI check. The LLM strategies have
-only scripted fake-provider tests. No model comparison has occurred.
+and its first three-case live CI check passed 2/3 attempts. The initial summary
+did not identify the failing case; the runner now emits bounded per-case
+diagnostics. The LLM strategies have scripted tests and an offline-tested hosted
+transport. No hosted call or model comparison has occurred.
 
 Each attempt will start from a checked healthy baseline. The trusted test
 runner injects one fault and confirms it manifested before starting a strategy.
@@ -30,5 +32,6 @@ If API budget or time is lower, the declared fallback is 10 configurations,
 new incidents. Invalid setups are counted separately, never as agent successes.
 
 No pilot, holdout, model call, or paid experiment has happened yet. No model or
-budget has been selected. All published fixture output is marked ineligible for
-benchmark claims.
+budget has been selected. Hosted runs require an explicit key, model, current
+input/output prices, and command-wide cap; an unknown-usage failure stops later
+calls. All published fixture output is marked ineligible for benchmark claims.

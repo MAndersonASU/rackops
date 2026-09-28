@@ -3,7 +3,7 @@
 ```mermaid
 flowchart LR
   Runner[Trusted test runner] -->|inject and reset| Lab[kind rackops cluster]
-  Agent[Restricted runbook Job; future LLM strategies] --> Gateway[Typed gateway]
+  Agent[Restricted runbook or hosted-agent Job] --> Gateway[Typed gateway]
   Gateway -->|only three approved fields| SA[Namespaced service account]
   SA --> Lab
   Lab --> Metrics[Prometheus and bounded logs/events]
@@ -33,5 +33,7 @@ host, that Deployment's image, and the API Service's target port. The test
 runner can also scale Redis to zero; the runtime Role cannot patch Redis.
 The restricted runbook Job repaired all three fault families in the real CI
 kind smoke. The trusted development runner also scores a fresh request check
-after the Job; its own live integration is pending. Hosted LLM strategies and
-held-out comparison remain future work.
+after the Job. Its first three-case live execution passed 2/3 and now reports
+case-level diagnostics. Basic and structured Jobs use an ephemeral provider
+Secret, which the trusted runner deletes, and the same restricted service
+account. Their OpenAI transport is offline-tested; no hosted call has run.

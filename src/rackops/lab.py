@@ -4,6 +4,7 @@ Scenario truth and injection are confined to this trusted test-runner module.
 """
 
 import json
+import os
 import subprocess
 import time
 import uuid
@@ -15,6 +16,14 @@ NAMESPACE = "rackops-lab"
 STATE = ROOT / "work" / "lab-incident.json"
 LABEL = {"rackops.io/lab": "rackops"}
 SCENARIOS = ("bad_redis_host", "bad_service_port", "bad_image", "redis_outage", "healthy")
+PROVIDER_ENV = (
+    "OPENAI_API_KEY",
+    "RACKOPS_LLM_MODEL",
+    "RACKOPS_LLM_BUDGET_USD",
+    "RACKOPS_LLM_INPUT_USD_PER_MILLION",
+    "RACKOPS_LLM_OUTPUT_USD_PER_MILLION",
+    "RACKOPS_LLM_MAX_ATTEMPTS",
+)
 
 
 def command(args: list[str], *, timeout=180, input_data=None, check=True):
@@ -281,6 +290,113 @@ def run_baseline_job() -> dict:
         raise RuntimeError("Baseline Job exceeded its 270-second runner limit")
     finally:
         kube("delete", "job", name, "--ignore-not-found", "--wait=false", check=False)
+
+
+def run_agent_job(strategy: str, *, cap_usd: float | None = None) -> dict:
+    """Run one hosted strategy with an ephemeral provider Secret and restricted identity."""
+    if strategy not in {"basic", "structured"}:
+        raise ValueError("Hosted strategy must be basic or structured")
+    guard()
+    settings = {name: os.getenv(name, "").strip() for name in PROVIDER_ENV}
+    settings["RACKOPS_LLM_MAX_ATTEMPTS"] = settings["RACKOPS_LLM_MAX_ATTEMPTS"] or "2"
+    missing = [name for name, value in settings.items() if not value]
+    if missing:
+        raise ValueError("Hosted-provider environment is incomplete")
+    if cap_usd is not None:
+        if type(cap_usd) is not float or cap_usd <= 0:
+            raise ValueError("Remaining hosted-provider budget must be positive")
+        configured = float(settings["RACKOPS_LLM_BUDGET_USD"])
+        settings["RACKOPS_LLM_BUDGET_USD"] = str(min(configured, cap_usd))
+
+    suffix = uuid.uuid4().hex[:8]
+    name = f"rackops-{strategy}-{suffix}"
+    secret_name = f"rackops-provider-{suffix}"
+    secret = {
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "metadata": {"name": secret_name, "namespace": NAMESPACE, "labels": LABEL},
+        "type": "Opaque",
+        "stringData": settings,
+    }
+    job = {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {"name": name, "namespace": NAMESPACE, "labels": LABEL},
+        "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 300,
+            "ttlSecondsAfterFinished": 120,
+            "template": {
+                "metadata": {"labels": LABEL},
+                "spec": {
+                    "restartPolicy": "Never",
+                    "serviceAccountName": "rackops-agent",
+                    "automountServiceAccountToken": True,
+                    "securityContext": {"runAsNonRoot": True, "runAsUser": 10001},
+                    "containers": [
+                        {
+                            "name": "agent",
+                            "image": "rackops-api:dev",
+                            "imagePullPolicy": "Never",
+                            "command": ["python", "-m", "rackops.agent_job"],
+                            "env": [{"name": "RACKOPS_STRATEGY", "value": strategy}],
+                            "envFrom": [{"secretRef": {"name": secret_name}}],
+                            "resources": {
+                                "requests": {"cpu": "50m", "memory": "96Mi"},
+                                "limits": {"cpu": "500m", "memory": "192Mi"},
+                            },
+                        }
+                    ],
+                },
+            },
+        },
+    }
+    secret_created = False
+    try:
+        kube("create", "-f", "-", input_data=json.dumps(secret))
+        secret_created = True
+        kube("create", "-f", "-", input_data=json.dumps(job))
+        deadline = time.monotonic() + 310
+        while time.monotonic() < deadline:
+            obj = json.loads(kube("get", "job", name, "-o", "json").stdout)
+            status = obj.get("status", {})
+            if status.get("succeeded") or status.get("failed"):
+                logs = kube("logs", f"job/{name}").stdout
+                raw = ROOT / "results" / "raw"
+                raw.mkdir(parents=True, exist_ok=True)
+                (raw / f"{name}.log").write_text(logs, encoding="utf-8")
+                try:
+                    result = json.loads(logs.splitlines()[-1])
+                except (ValueError, IndexError) as exc:
+                    raise RuntimeError("Hosted agent Job did not return a valid result") from exc
+                if (
+                    type(result) is not dict
+                    or result.get("execution_mode") != "kubernetes_hosted_provider"
+                    or result.get("strategy") != strategy
+                    or type(result.get("decision")) is not dict
+                    or type(result.get("repair_attempts")) is not int
+                    or type(result.get("tool_calls")) is not int
+                    or type(result.get("input_tokens")) is not int
+                    or type(result.get("output_tokens")) is not int
+                    or type(result.get("api_cost_usd")) not in {int, float}
+                    or type(result.get("budget_charge_usd")) not in {int, float}
+                    or type(result.get("api_cost_complete")) is not bool
+                ):
+                    raise RuntimeError("Hosted agent Job returned an unexpected result")
+                return result
+            time.sleep(2)
+        raise RuntimeError("Hosted agent Job exceeded its 310-second runner limit")
+    finally:
+        kube("delete", "job", name, "--ignore-not-found", "--wait=false", check=False)
+        if secret_created:
+            kube(
+                "delete",
+                "secret",
+                secret_name,
+                "--ignore-not-found",
+                "--wait=false",
+                check=False,
+            )
 
 
 def scenario_resource(scenario):

@@ -1,6 +1,8 @@
 """Trusted serial development runner; scenario truth never enters the agent Job."""
 
 import json
+import math
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -34,8 +36,12 @@ def score(case: Case, agent_result: dict, independent_check: dict) -> dict:
     decision = agent_result.get("decision", {})
     if type(decision) is not dict:
         decision = {}
+    strategy = agent_result.get("strategy", "runbook")
+    expected_decision = (
+        "claimed_healthy" if strategy == "basic" and case.scenario == "healthy" else case.decision
+    )
     expected_behavior = (
-        decision.get("status") == case.decision
+        decision.get("status") == expected_decision
         and decision.get("root_cause") == case.category
         and agent_result.get("repair_attempts") == case.repairs
     )
@@ -51,7 +57,7 @@ def score(case: Case, agent_result: dict, independent_check: dict) -> dict:
         )
     )
     return {
-        "expected_decision": case.decision,
+        "expected_decision": expected_decision,
         "expected_category": case.category,
         "expected_repairs": case.repairs,
         "decision_correct": expected_behavior,
@@ -60,13 +66,13 @@ def score(case: Case, agent_result: dict, independent_check: dict) -> dict:
     }
 
 
-def run_case(case: Case) -> dict:
+def run_case(case: Case, strategy: str = "runbook", *, cap_usd: float | None = None) -> dict:
     """Reset before and after an attempt, recording invalid setups separately."""
     record = {
         "recorded_at": datetime.now(UTC).isoformat(),
         "execution_mode": "kubernetes_development",
         "benchmark_eligible": False,
-        "strategy": "runbook",
+        "strategy": strategy,
         "scenario": case.scenario,
         "ground_truth_category": case.category,
         "invalid_setup": False,
@@ -89,7 +95,11 @@ def run_case(case: Case) -> dict:
         record["failure"] = {"phase": "setup", "type": type(exc).__name__}
     else:
         try:
-            agent_result = lab.run_baseline_job()
+            agent_result = (
+                lab.run_baseline_job()
+                if strategy == "runbook"
+                else lab.run_agent_job(strategy, cap_usd=cap_usd)
+            )
             independent_check = lab.request_check(duration_seconds=60)
             record["agent"] = agent_result
             record["independent_check"] = independent_check
@@ -110,25 +120,74 @@ def run_case(case: Case) -> dict:
     return record
 
 
-def run_development(record_path: Path, scenarios: list[str] | None = None) -> dict:
+def run_development(
+    record_path: Path,
+    scenarios: list[str] | None = None,
+    strategy: str = "runbook",
+) -> dict:
+    if strategy not in {"runbook", "basic", "structured"}:
+        raise ValueError("Choose runbook, basic, or structured")
     selected = list(CASES) if scenarios is None else scenarios
     if not selected or len(set(selected)) != len(selected) or any(s not in CASES for s in selected):
         raise ValueError("Choose distinct supported development scenarios")
     record_path.parent.mkdir(parents=True, exist_ok=True)
     records = []
+    configured_budget = None
+    remaining_budget = None
+    if strategy != "runbook":
+        try:
+            configured_budget = float(os.getenv("RACKOPS_LLM_BUDGET_USD", ""))
+        except ValueError:
+            raise ValueError("Hosted-provider budget is invalid") from None
+        if not math.isfinite(configured_budget) or configured_budget <= 0:
+            raise ValueError("Hosted-provider budget must be finite and positive")
+        remaining_budget = configured_budget
+    budget_exhausted = False
     for scenario in selected:
-        record = run_case(CASES[scenario])
+        record = run_case(CASES[scenario], strategy, cap_usd=remaining_budget)
         with record_path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(record, sort_keys=True) + "\n")
         records.append(record)
+        if remaining_budget is not None:
+            if "agent" in record:
+                remaining_budget -= record["agent"]["budget_charge_usd"]
+            elif record.get("failure", {}).get("phase") == "execution":
+                # A failed Job may have made a paid call without returning usage.
+                # Stop further calls rather than risk exceeding the declared cap.
+                remaining_budget = 0
+            if remaining_budget <= 0 and scenario != selected[-1]:
+                budget_exhausted = True
+                break
+    case_results = [
+        {
+            "scenario": record["scenario"],
+            "passed": record["passed"],
+            "invalid_setup": record["invalid_setup"],
+            "decision": record.get("agent", {}).get("decision"),
+            "independent_check": record.get("independent_check"),
+            "score": record.get("score"),
+            "failure": record.get("failure"),
+        }
+        for record in records
+    ]
     return {
         "execution_mode": "kubernetes_development",
         "benchmark_eligible": False,
-        "strategy": "runbook",
+        "strategy": strategy,
         "attempts": len(records),
         "valid_attempts": sum(not r["invalid_setup"] for r in records),
         "passed_attempts": sum(r["passed"] for r in records),
         "invalid_setups": sum(r["invalid_setup"] for r in records),
-        "passed": all(r["passed"] for r in records),
+        "api_cost_usd": round(sum(r.get("agent", {}).get("api_cost_usd", 0) for r in records), 8),
+        "budget_charge_usd": round(
+            sum(r.get("agent", {}).get("budget_charge_usd", 0) for r in records), 8
+        ),
+        "api_cost_complete": all(
+            r.get("agent", {}).get("api_cost_complete", True) for r in records
+        ),
+        "configured_budget_usd": configured_budget,
+        "budget_exhausted": budget_exhausted,
+        "passed": len(records) == len(selected) and all(r["passed"] for r in records),
+        "case_results": case_results,
         "records": str(record_path),
     }

@@ -102,3 +102,51 @@ def test_malformed_agent_decision_never_scores_as_success():
             "duration_seconds": 60,
         },
     )["passed"]
+
+
+def test_basic_healthy_uses_strategy_specific_nonmutating_decision():
+    case = experiment.CASES["healthy"]
+    agent = {
+        "strategy": "basic",
+        "decision": {"status": "claimed_healthy", "root_cause": "healthy"},
+        "repair_attempts": 0,
+    }
+    check = {
+        "passed": True,
+        "requests": 300,
+        "successes": 300,
+        "requested_duration_seconds": 60,
+        "duration_seconds": 60,
+    }
+    assert experiment.score(case, agent, check)["passed"]
+
+
+def test_hosted_command_stops_when_conservative_budget_is_exhausted(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_case(case, strategy, *, cap_usd):
+        calls.append((case.scenario, strategy, cap_usd))
+        return {
+            "scenario": case.scenario,
+            "strategy": strategy,
+            "invalid_setup": False,
+            "passed": True,
+            "agent": {
+                "api_cost_usd": 0.25,
+                "budget_charge_usd": 1.0,
+                "api_cost_complete": False,
+            },
+        }
+
+    monkeypatch.setenv("RACKOPS_LLM_BUDGET_USD", "1")
+    monkeypatch.setattr(experiment, "run_case", fake_case)
+    result = experiment.run_development(
+        tmp_path / "attempts.jsonl",
+        ["healthy", "bad_redis_host"],
+        "basic",
+    )
+    assert calls == [("healthy", "basic", 1.0)]
+    assert result["attempts"] == 1
+    assert result["budget_exhausted"]
+    assert not result["api_cost_complete"]
+    assert not result["passed"]

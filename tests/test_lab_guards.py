@@ -251,6 +251,56 @@ def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_
     assert "scenario" not in json.dumps(pod)
 
 
+def test_hosted_job_uses_ephemeral_secret_without_scenario_truth(monkeypatch, tmp_path):
+    monkeypatch.setattr(lab, "ROOT", tmp_path)
+    monkeypatch.setattr(lab, "guard", lambda: None)
+    for name in lab.PROVIDER_ENV:
+        monkeypatch.setenv(name, "1" if "USD" in name or "ATTEMPTS" in name else "fixture")
+    created = []
+    deleted = []
+
+    def fake_kube(*args, **kwargs):
+        if args[0] == "create":
+            created.append(json.loads(kwargs["input_data"]))
+            return SimpleNamespace(stdout="")
+        if args[0] == "get":
+            return SimpleNamespace(stdout=json.dumps({"status": {"succeeded": 1}}))
+        if args[0] == "logs":
+            return SimpleNamespace(
+                stdout=json.dumps(
+                    {
+                        "execution_mode": "kubernetes_hosted_provider",
+                        "strategy": "structured",
+                        "model_id": "fixture",
+                        "decision": {"status": "healthy_no_action"},
+                        "repair_attempts": 0,
+                        "tool_calls": 8,
+                        "input_tokens": 100,
+                        "output_tokens": 20,
+                        "api_cost_usd": 0.001,
+                        "budget_charge_usd": 0.001,
+                        "api_cost_complete": True,
+                    }
+                )
+                + "\n"
+            )
+        if args[0] == "delete":
+            deleted.append(args[1:3])
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr(lab, "kube", fake_kube)
+    result = lab.run_agent_job("structured", cap_usd=0.5)
+    assert result["strategy"] == "structured"
+    secret, job = created
+    assert secret["kind"] == "Secret"
+    assert secret["stringData"]["RACKOPS_LLM_BUDGET_USD"] == "0.5"
+    pod = job["spec"]["template"]["spec"]
+    assert pod["serviceAccountName"] == "rackops-agent"
+    assert pod["containers"][0]["envFrom"] == [{"secretRef": {"name": secret["metadata"]["name"]}}]
+    assert "scenario" not in json.dumps(job).lower()
+    assert ("secret", secret["metadata"]["name"]) in deleted
+
+
 def test_full_window_check_runs_in_fresh_trusted_job(monkeypatch):
     created = []
 

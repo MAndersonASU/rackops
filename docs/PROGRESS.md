@@ -6,8 +6,10 @@
 (36370314133) passed all five development scenarios: three real repairs,
 unsupported escalation with zero repairs, and healthy no-op with zero repairs.
 This is one CI lab smoke, not a held-out benchmark or an LLM comparison.
-Explicit Role allow/deny checks also passed in run 36371065150. Prometheus
-query contents, laptop setup, and hosted LLM strategies still need checks.
+Explicit Role allow/deny checks also passed in run 36371065150. The first live
+serial evaluator run 36371654019 completed three valid setups but passed 2/3;
+its original output omitted the failing case, so per-case diagnostics were
+added. Prometheus query contents, laptop setup, and hosted execution still need checks.
 
 ## Environment facts
 
@@ -59,13 +61,16 @@ query contents, laptop setup, and hosted LLM strategies still need checks.
 - In-cluster HTTP adapter and namespaced `rackops-agent` Role/RoleBinding;
   mock-transport tests pass. A real restricted Job handled all five scenarios
   in CI; explicit Role allow/deny checks passed in run 36371065150.
-  Hosted LLM strategies and the full experiment runner are still absent.
+  Hosted LLM strategy execution is implemented but has not run live.
 - A restricted runbook Job is wired to the operator CLI. After a proposed
   repair, its trusted checker waits for rollout readiness and probes real
   writes/reads for 60 seconds; all three repair paths passed in CI kind.
-- Basic and structured strategy loops have scripted fake-provider tests. The
-  fake is labeled ineligible for benchmark claims and makes zero paid calls.
-  Hosted-model transport and live comparison have not been implemented.
+- Basic and structured strategy loops have scripted fake-provider tests. A
+  bounded OpenAI Responses transport uses strict schema output, `store: false`,
+  retries, validated usage, pre-call budget reservation, and owner-supplied
+  model/prices/cap. The trusted runner injects an ephemeral Secret into a
+  restricted Job. Transport and Job construction are offline-tested; zero paid
+  calls have been made.
 - Fast CI and manually gated kind smoke workflow; one full five-case smoke passed.
 - Static results dashboard generator reads selected JSON and labels replay,
   fixture, live kind, and benchmark eligibility. Six selected records render;
@@ -73,7 +78,8 @@ query contents, laptop setup, and hosted LLM strategies still need checks.
 - Trusted `evaluate-dev` runner resets between known scenarios, keeps hidden
   truth outside the runtime Job, scores its decision against a separate 60-second
   request-check Job, and stores JSONL under ignored `results/raw/`. It has
-  offline boundary tests, but the command itself has not yet run live.
+  offline boundary tests. Run 36371654019 executed three valid cases and passed
+  2/3; case-level diagnostics were added for the rerun.
 
 ## Checks and failures
 
@@ -129,6 +135,11 @@ query contents, laptop setup, and hosted LLM strategies still need checks.
   secret listing, and Pod patch denied. The independent development runner is
   being added after that run. Latest local suite: **72 tests passed**, Ruff
   lint/format and `pip check` passed; one upstream Starlette warning remains.
+- Run 36371654019 on `ad0b033` passed all earlier five-case and RBAC stages.
+  Its new serial evaluator completed three valid attempts but passed 2/3. The
+  summary did not expose which case failed, so the runner now includes each
+  case's decision, independent-check metrics, and score. Current local suite:
+  **85 tests passed** with Ruff lint/format; no hosted API call was made.
 
 ## Budget and delivery
 
@@ -146,17 +157,16 @@ code was copied.
 
 ## Next three actions
 
-1. Run `evaluate-dev` in CI, inspect its separate 60-second checker records,
-   and investigate the earlier intermittent 2/4 startup smoke if it recurs.
+1. Rerun `evaluate-dev` in CI with its new case diagnostics and correct the
+   single failed development attempt without weakening the checker.
 2. From a normal user terminal, confirm Docker Linux mode and WSL version;
    make Docker, kind, and kubectl available, then run `rackops doctor` locally.
-3. Add hosted-model transport, calibrate and freeze the recovery threshold,
-   then plan the holdout with an agreed API budget before any paid calls.
+3. After selecting a model and agreed API cap, live-check both hosted strategies;
+   calibrate and freeze the recovery threshold before planning the holdout.
 
 ## Remaining project scope
 
-Hosted LLM transport for the structured/basic loops, a trusted independent
-experiment runner, held-out evaluation, dashboard refinement, and local laptop
-reproduction are incomplete. Explicit Role denials and rollback failure paths
-still need live checks. The evidence ledger and rollback core have offline
-tests. Do not infer benchmark or LLM success from smoke checks.
+Live hosted execution, evaluator diagnosis, threshold calibration, held-out
+evaluation, dashboard refinement, and local laptop reproduction are incomplete.
+Rollback failure paths still need live checks. The evidence ledger and rollback
+core have offline tests. Do not infer benchmark or LLM success from smoke checks.

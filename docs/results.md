@@ -3,7 +3,7 @@
 No Kubernetes benchmark or LLM evaluation has been run. Real kind smokes
 passed on GitHub Actions runners; they are development integration checks.
 
-Development verification on 2026-09-27: **72 pytest tests passed** on
+Development verification on 2026-09-27: **85 pytest tests passed** on
 Windows/Python 3.12.14. Ruff lint and format checks and `pip check`
 passed. One upstream Starlette TestClient deprecation warning remains.
 The transport test used real HTTP/Redis-protocol sockets with simulated Redis.
@@ -39,8 +39,14 @@ agent. Selected per-case summaries are in `results/`; `rackops report` builds
 Manual [run 36371065150](https://github.com/MAndersonASU/rackops/actions/runs/36371065150)
 repeated all five cases and passed explicit Kubernetes permission checks for
 the restricted service account: named API Deployment patch was allowed;
-Redis Deployment patch, secret listing, and Pod patch were denied. The new
-`evaluate-dev` command has only offline tests so far.
+Redis Deployment patch, secret listing, and Pod patch were denied.
+
+Manual [run 36371654019](https://github.com/MAndersonASU/rackops/actions/runs/36371654019)
+then ran three known cases through `evaluate-dev`: all three setups were valid,
+but only 2/3 attempts passed. The original summary did not include the failing
+case, so no cause is claimed. The runner now prints bounded case-level details
+for the next diagnostic run. Earlier five-case smoke and RBAC stages in that
+same workflow passed.
 
 These are development runs, not a recovery-rate estimate. A prior run
 escalated incorrectly due a runbook rule that has since been fixed. Another
@@ -62,5 +68,5 @@ any Kubernetes integration. See `results/fixture-demo.json` for the selected
 sanitized output, explicitly excluded from benchmarks.
 
 The suite also tests deliberately corrupt response bodies: HTTP 200 alone does
-not pass the checker. No tokens, API cost, held-out root-cause accuracy, or
-recovery rates are reported because those experiments do not yet exist.
+not pass the checker. No hosted-model tokens, API cost, held-out root-cause
+accuracy, or recovery rates are reported because those experiments do not yet exist.
