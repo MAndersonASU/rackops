@@ -61,6 +61,17 @@ def test_bad_dependency_repaired_from_history(observed):
     assert backend.fields[("deployment", "rackops-api", "redis_host")] == "redis"
 
 
+def test_unready_redis_host_fault_does_not_require_prior_image(observed):
+    backend = FieldsBackend()
+    gateway = make_gateway(backend)
+    decision = run(
+        gateway,
+        replace(observed, rollout_ready=False, prior_images=()),
+    )
+    assert decision.root_cause == "bad_dependency_configuration"
+    assert decision.status == "verified_repair"
+
+
 def test_wrong_service_port_uses_observed_container_port(observed):
     backend = FieldsBackend()
     gateway = make_gateway(backend)

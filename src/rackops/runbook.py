@@ -32,10 +32,8 @@ def decide(observed: Observations) -> tuple[str, str | int | None, str | None]:
     """Return category, proposed value, and repair field from operational clues."""
     if observed.redis_replicas == 0:
         return "unsupported_dependency_outage", None, None
-    if not observed.rollout_ready and observed.image not in observed.prior_images:
-        if observed.prior_images:
-            return "broken_image", observed.prior_images[-1], "image"
-        return "unknown", None, None
+    if not observed.rollout_ready and observed.prior_images:
+        return "broken_image", observed.prior_images[-1], "image"
     if observed.probe_passed and observed.rollout_ready:
         return "healthy", None, None
     if observed.service_target_port != observed.container_port:
