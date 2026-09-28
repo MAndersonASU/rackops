@@ -1,0 +1,47 @@
+{
+  "attempts": 3,
+  "benchmark_eligible": false,
+  "cases": [
+    {
+      "independent_check": {
+        "complete_window": true,
+        "criterion": "rackops-recovery-v1",
+        "latency_limit_ms": 50.0,
+        "p95_latency_ms": 3.142,
+        "requests": 300,
+        "successes": 300
+      },
+      "passed": true,
+      "scenario": "bad_redis_host"
+    },
+    {
+      "independent_check": {
+        "complete_window": true,
+        "criterion": "rackops-recovery-v1",
+        "latency_limit_ms": 50.0,
+        "p95_latency_ms": 3.061,
+        "requests": 300,
+        "successes": 300
+      },
+      "passed": true,
+      "scenario": "healthy"
+    },
+    {
+      "independent_check": {
+        "complete_window": false,
+        "criterion": "rackops-recovery-v1",
+        "latency_limit_ms": 50.0,
+        "p95_latency_ms": 1024.893,
+        "requests": 66,
+        "successes": 0
+      },
+      "passed": true,
+      "scenario": "redis_outage"
+    }
+  ],
+  "commit": "0b934e861af821c281b60041b8e9fe4f5297d875",
+  "execution_mode": "github_actions_kind_evaluator",
+  "live_request_rate_per_second": 0.211093,
+  "passed_attempts": 3,
+  "source_run": "https://github.com/MAndersonASU/rackops/actions/runs/36460413617"
+}

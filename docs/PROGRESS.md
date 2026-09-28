@@ -163,6 +163,10 @@ need checks.
   RBAC checks, live Prometheus rate query, and all 3/3 diagnostic evaluator
   cases. Run 36374095023 completed five healthy calibration windows at 300/300
   correct requests. Current local suite: **94 tests passed**.
+- Run 36460413617 on `0b934e8` revalidated the five scenarios, RBAC checks,
+  live metrics, and all 3/3 evaluator cases against frozen
+  `rackops-recovery-v1`. The two successful 300-request windows had p95 3.142
+  and 3.061 ms under the 50 ms limit. Current local suite: **104 tests passed**.
 
 ## Budget and delivery
 

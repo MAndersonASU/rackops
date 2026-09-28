@@ -71,6 +71,14 @@ max(50 ms, twice worst healthy p95) formula produced 50 ms. That threshold is
 frozen as `rackops-recovery-v1`; selected evidence is in
 `results/healthy-calibration-2026-09-28.json`.
 
+Frozen-criterion verification
+[run 36460413617](https://github.com/MAndersonASU/rackops/actions/runs/36460413617)
+then passed all five standalone scenarios, RBAC checks, and all 3/3 evaluator
+cases. The repaired Redis-host and healthy cases each completed 300/300
+requests with p95 3.142 ms and 3.061 ms under the 50 ms limit. The unsupported
+outage correctly remained unavailable and escalated. Its selected summary is
+`results/frozen-criterion-development-2026-09-28.json`.
+
 These are development runs, not a recovery-rate estimate. A prior run
 escalated incorrectly due a runbook rule that has since been fixed. Another
 run had 2/4 correct requests immediately after startup; that intermittent
