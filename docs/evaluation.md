@@ -51,3 +51,6 @@ The holdout runner records manifest, runtime implementation, and non-secret
 provider-configuration hashes, refuses an incompatible resume, and summarizes root-cause accuracy, verified
 repairs, healthy and unsupported behavior, regressions, policy denials,
 forbidden actions, rollback outcomes, tool calls, tokens, and measured cost.
+Paid workflows are manual-only. A two-call development pilot is separate from
+the holdout. The holdout workflow has an explicit frozen-run gate, uses one
+command-wide cap, and uploads raw records for later sanitization and reporting.

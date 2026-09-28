@@ -1,0 +1,79 @@
+name: frozen reduced holdout
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Exact Responses API model ID, fixed for all attempts
+        required: true
+        default: gpt-6-sol
+      reasoning_effort:
+        description: Fixed reasoning effort
+        required: true
+        type: choice
+        options: [none, low, medium, high]
+        default: none
+      budget_usd:
+        description: Command-wide USD cap for the complete batch
+        required: true
+      input_usd_per_million:
+        description: Current standard input price per million tokens
+        required: true
+        default: '2.0'
+      output_usd_per_million:
+        description: Current standard output price per million tokens
+        required: true
+        default: '10.0'
+      confirm_frozen_run:
+        description: Confirm this is the frozen 60-attempt run
+        required: true
+        type: choice
+        options: ['no', 'yes']
+        default: 'no'
+permissions:
+  contents: read
+jobs:
+  holdout:
+    if: inputs.confirm_frozen_run == 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      RACKOPS_LLM_MODEL: ${{ inputs.model }}
+      RACKOPS_LLM_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
+      RACKOPS_LLM_BUDGET_USD: ${{ inputs.budget_usd }}
+      RACKOPS_LLM_INPUT_USD_PER_MILLION: ${{ inputs.input_usd_per_million }}
+      RACKOPS_LLM_OUTPUT_USD_PER_MILLION: ${{ inputs.output_usd_per_million }}
+      RACKOPS_LLM_MAX_ATTEMPTS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: helm/kind-action@v1
+        with:
+          install_only: true
+      - run: python -m pip install -r requirements.lock
+      - run: python -m pip install --no-deps -e .
+      - name: Validate explicit paid-run configuration
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          test -n "$OPENAI_API_KEY"
+          python - <<'PY'
+          import math, os
+          value = float(os.environ["RACKOPS_LLM_BUDGET_USD"])
+          if not math.isfinite(value) or value <= 0:
+              raise SystemExit("budget_usd must be finite and positive")
+          PY
+      - run: rackops lab up
+      - name: Execute frozen reduced holdout
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: rackops evaluate-holdout | tee results/raw/reduced-holdout-summary.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reduced-holdout-records
+          path: results/raw/
+          if-no-files-found: warn
+      - if: always()
+        run: rackops lab down

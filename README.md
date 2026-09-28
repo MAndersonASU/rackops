@@ -188,6 +188,11 @@ rackops evaluate-holdout
 
 The holdout has not been executed. Do not inspect its outcomes and tune prompts;
 doing so converts it to development data and requires a new holdout.
+The manual `hosted strategy pilot` workflow first exercises one basic healthy
+case and one structured repair case. The separate `frozen reduced holdout`
+workflow requires an explicit `yes` gate and uploads ignored raw records as a
+GitHub Actions artifact. Both require the repository `OPENAI_API_KEY` secret;
+neither runs on pushes or pull requests.
 
 ## Verification and limitations
 
