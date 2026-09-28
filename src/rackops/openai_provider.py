@@ -7,6 +7,7 @@ The provider receives operational evidence only, never trusted scenario truth.
 import json
 import math
 import os
+import re
 import time
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
@@ -72,6 +73,23 @@ INTENT_SCHEMA = {
 
 class OpenAIProviderError(RuntimeError):
     """A sanitized provider failure safe for execution records."""
+
+
+def _http_failure(response: httpx.Response) -> OpenAIProviderError:
+    """Classify an HTTP failure without retaining provider text or request data."""
+    details = []
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    error = body.get("error") if type(body) is dict else None
+    if type(error) is dict:
+        for name in ("type", "code"):
+            value = error.get(name)
+            if type(value) is str and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", value):
+                details.append(f"{name}={value}")
+    suffix = ", ".join([f"status={response.status_code}", *details])
+    return OpenAIProviderError(f"OpenAI Responses request failed ({suffix})")
 
 
 @dataclass(frozen=True)
@@ -346,11 +364,14 @@ class OpenAIProvider:
                 ):
                     time.sleep(0.25 * (attempt + 1))
                     continue
-                response.raise_for_status()
+                if response.is_error:
+                    raise _http_failure(response)
                 data = response.json()
                 if type(data) is not dict:
                     raise ValueError("Non-object response")
                 return data, attempt + 1
+            except OpenAIProviderError:
+                raise
             except (httpx.HTTPError, ValueError):
                 if attempt + 1 >= self.max_attempts:
                     raise OpenAIProviderError("OpenAI Responses request failed") from None

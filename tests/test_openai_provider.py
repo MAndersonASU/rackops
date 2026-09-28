@@ -143,6 +143,32 @@ def test_transient_failure_retries_once_and_charges_unknown_attempt(monkeypatch)
     assert hosted.last_usage["api_cost_complete"] is False
 
 
+def test_http_failure_retains_only_safe_classification():
+    hosted, budget, client = provider(
+        lambda request: httpx.Response(
+            400,
+            json={
+                "error": {
+                    "type": "invalid_request_error",
+                    "code": "unsupported_value",
+                    "message": "private upstream detail",
+                }
+            },
+        )
+    )
+    try:
+        with pytest.raises(OpenAIProviderError) as captured:
+            hosted.choose(observed())
+    finally:
+        client.close()
+    message = str(captured.value)
+    assert "status=400" in message
+    assert "type=invalid_request_error" in message
+    assert "code=unsupported_value" in message
+    assert "private upstream detail" not in message
+    assert budget.spent_usd > 0
+
+
 @pytest.mark.parametrize(
     "body,error",
     [
