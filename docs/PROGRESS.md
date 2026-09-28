@@ -167,6 +167,9 @@ need checks.
   live metrics, and all 3/3 evaluator cases against frozen
   `rackops-recovery-v1`. The two successful 300-request windows had p95 3.142
   and 3.061 ms under the 50 ms limit. Current local suite: **104 tests passed**.
+- Run 36461878925 on `3609f08` passed the same live checks plus a separate
+  two-replica development variation with a non-holdout Redis-host value. Its
+  repair passed before the serial evaluator again completed 3/3.
 
 ## Budget and delivery
 

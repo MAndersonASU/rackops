@@ -79,6 +79,12 @@ requests with p95 3.142 ms and 3.061 ms under the 50 ms limit. The unsupported
 outage correctly remained unavailable and escalated. Its selected summary is
 `results/frozen-criterion-development-2026-09-28.json`.
 
+Variation-validation
+[run 36461878925](https://github.com/MAndersonASU/rackops/actions/runs/36461878925)
+also passed a separate two-replica Redis-host repair using a development-only
+fault value, followed by another 3/3 evaluator pass. This checks the holdout
+variation mechanism without executing or tuning on a frozen holdout case.
+
 These are development runs, not a recovery-rate estimate. A prior run
 escalated incorrectly due a runbook rule that has since been fixed. Another
 run had 2/4 correct requests immediately after startup; that intermittent
