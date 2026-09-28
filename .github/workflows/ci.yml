@@ -32,7 +32,10 @@ jobs:
       - run: python -m pip install --no-deps -e .
       - run: rackops lab up
       - run: rackops lab inject
-      - run: rackops lab baseline --expect verified_repair
+      - run: rackops lab baseline --expect verified_repair --expect-cause bad_dependency_configuration
+      - run: rackops lab recover
+      - run: rackops lab inject --scenario bad_service_port
+      - run: rackops lab baseline --expect verified_repair --expect-cause bad_service_target_port
       - run: rackops lab recover
       - if: always()
         run: rackops lab down

@@ -201,7 +201,10 @@ def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_
                     {
                         "execution_mode": "kubernetes",
                         "strategy": "runbook",
-                        "decision": {"status": "verified_repair"},
+                        "decision": {
+                            "status": "verified_repair",
+                            "root_cause": "bad_dependency_configuration",
+                        },
                     }
                 )
                 + "\n"
@@ -209,8 +212,11 @@ def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_
         return SimpleNamespace(stdout="")
 
     monkeypatch.setattr(lab, "kube", fake_kube)
-    result = lab.run("baseline", expected="verified_repair")
+    result = lab.run(
+        "baseline", expected="verified_repair", expected_cause="bad_dependency_configuration"
+    )
     assert result["passed"]
+    assert not lab.run("baseline", expected_cause="broken_image")["passed"]
     pod = created[0]["spec"]["template"]["spec"]
     assert pod["serviceAccountName"] == "rackops-agent"
     assert pod["automountServiceAccountToken"] is True

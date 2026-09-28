@@ -390,7 +390,7 @@ def recover():
     }
 
 
-def run(action, scenario="bad_redis_host", expected=None):
+def run(action, scenario="bad_redis_host", expected=None, expected_cause=None):
     if action == "up":
         if (
             command(["docker", "info", "--format", "{{.OSType}}"], timeout=20).stdout.strip()
@@ -439,8 +439,11 @@ def run(action, scenario="bad_redis_host", expected=None):
         return recover()
     if action == "baseline":
         result = run_baseline_job()
-        if expected is not None:
-            result["passed"] = result.get("decision", {}).get("status") == expected
+        if expected is not None or expected_cause is not None:
+            decision = result.get("decision", {})
+            result["passed"] = (expected is None or decision.get("status") == expected) and (
+                expected_cause is None or decision.get("root_cause") == expected_cause
+            )
         return result
     guard()
     if action == "reset":

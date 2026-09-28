@@ -2,10 +2,12 @@
 
 ## Current milestone
 
-2026-09-27: milestones 1–4 have partial local implementations. The API,
-scenario runner, runbook, and gateway/adapter have offline tests. **No live
-milestone is accepted yet:** real Redis, container build, Kubernetes readiness,
-Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
+2026-09-27: milestones 1–4 have partial implementations. A manually triggered
+GitHub Actions kind run passed one real Redis-host incident and restricted
+runbook repair on commit `6027e26` (run 36368976410). Other fault families,
+healthy/unsupported decisions, Prometheus queries, laptop setup, and LLM
+strategies still need live integration checks. This single CI smoke is not a
+benchmark or a completed comparison.
 
 ## Environment facts
 
@@ -53,15 +55,16 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
 - Deterministic runbook rules and a typed gateway with evidence IDs, action
   limits, field restrictions, version checks, JSONL records, and rollback.
 - In-cluster HTTP adapter and namespaced `rackops-agent` Role/RoleBinding;
-  mock-transport tests pass, but real RBAC has not been exercised. Agent Pod,
-  LLM strategies, and full experiment runner are still absent.
+  mock-transport tests pass. A real restricted Job repaired the Redis-host
+  fault in CI; explicit Role permission/denial checks and other faults remain.
+  Hosted LLM strategies and the full experiment runner are still absent.
 - A restricted runbook Job is wired to the operator CLI. After a proposed
   repair, its trusted checker waits for rollout readiness and probes real
   writes/reads for 60 seconds; this path is not yet run in a cluster.
 - Basic and structured strategy loops have scripted fake-provider tests. The
   fake is labeled ineligible for benchmark claims and makes zero paid calls.
   Hosted-model transport and live comparison have not been implemented.
-- Fast CI and manually gated kind smoke workflow (not run on GitHub).
+- Fast CI and manually gated kind smoke workflow; one full kind smoke passed.
 
 ## Checks and failures
 
@@ -86,36 +89,49 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
   escalation, denied fields, stale state, failed repair/rollback, and mocked
   Kubernetes REST operations. All are offline; only the transport fixture uses
   real HTTP sockets, against simulated Redis.
+- On 2026-09-27 (2026-09-28 UTC), the first manual kind run (36368513075)
+  started the cluster and manifested the Redis-host fault, but the runbook
+  escalated because an unready deployment with no previous image was mistaken
+  for an unknown image fault. A regression test and rule fix were pushed.
+  Another run (36368754110) had an intermittent first smoke check of 2/4
+  correct requests after startup; its cause is still unknown. Per-request
+  failure reasons were added for future diagnosis. Neither run is a success.
+- Manual kind run 36368976410 on commit `6027e26` passed: healthy setup 4/4,
+  injected Redis-host fault 0/4, restricted runbook decision
+  `verified_repair`, one repair in 10 gateway calls, 62.174 seconds elapsed
+  including the full request window, recovery check 4/4. It used real Redis
+  and a real Kubernetes cluster on a GitHub Actions runner, not this laptop.
+  Fast CI also passed. Latest local suite: **64 tests passed** with Ruff
+  lint/format checks; one upstream Starlette warning remains.
 
 ## Budget and delivery
 
 No API spending cap agreed; zero paid LLM calls and zero API spend.
 The owner authorized automatic GitHub publication on 2026-09-27. Public
 repository `MAndersonASU/rackops` exists, with description, MIT license, and
-topics. Three local commits through `cbc07ef` were pushed to `main` and remote
+topics. Commits through `6027e26` were pushed to `main` and remote
 tracking verified. The first Git transport attempt failed under Windows
 Schannel; a CA bundle exported from the local Windows trust store allowed a
 verified TLS Git push using the existing GitHub CLI login. TLS verification
-stayed enabled. GitHub Actions `deterministic checks` completed successfully
-for `cbc07ef` (run 36368068846) and `9070064` (run 36368188411). The manually
-gated kind smoke job has not run.
+stayed enabled. GitHub Actions fast checks passed, including manual run
+36368976410. Its kind smoke job also passed after two earlier diagnostic
+failures. Selected output is in `results/kind-smoke-2026-09-28.json`.
 No cloud infrastructure provisioned. Source code is under MIT; no framework
 code was copied.
 
 ## Next three actions
 
-1. From a normal user terminal, confirm Docker Linux mode and WSL version;
-   make Docker, kind, and kubectl available, then run `rackops doctor`.
-2. Execute `rackops lab up`, `rackops lab inject`, `rackops lab recover`, and
-   verify Prometheus data. Record actual output before accepting milestones 1–2.
-3. Run the restricted baseline Job and verify Role permissions/denials in the
-   live cluster. Then add hosted-model transport with a budget cap before any
-   paid evaluation and implement the independent experiment runner.
+1. Diagnose the intermittent 2/4 startup smoke and run the other two repairable
+   faults plus healthy and unsupported cases in kind with Role denial checks.
+2. From a normal user terminal, confirm Docker Linux mode and WSL version;
+   make Docker, kind, and kubectl available, then run `rackops doctor` locally.
+3. Implement the independent experiment runner and selected results viewer.
+   Add hosted-model transport only after an API budget is agreed.
 
 ## Remaining project scope
 
 Hosted LLM transport for the structured/basic loops, full live runbook, runtime RBAC
-integration, healthy/unsupported live scoring, experiment runner, heldout
+integration for all cases, healthy/unsupported live scoring, experiment runner, heldout
 evaluation, dashboard, and final portfolio demo are not complete. The evidence
 ledger and rollback core have offline
 tests only. Do not infer live success from fixtures or draft manifests.

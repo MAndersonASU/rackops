@@ -1,8 +1,9 @@
 # RackOps
 
 An evidence-grounded incident-response experiment for a disposable local
-Kubernetes lab. **Work in progress: first application and dependency-fault slice.**
-No LLM comparison or Kubernetes benchmark has been completed.
+Kubernetes lab. **Work in progress:** one real Redis-host incident and
+restricted runbook repair passed in GitHub Actions kind; the remaining cases
+and LLM comparison are unfinished. No Kubernetes benchmark has been completed.
 
 The application stores short-lived values in Redis. The checker sends real
 writes and reads and checks exact responses. The intended question is whether
@@ -16,7 +17,7 @@ flowchart LR
     Probe[Independent request checker] -->|write / read| API
     API --> Redis[Disposable Redis]
     Prometheus -->|scrape metrics| API
-    Planned[Planned restricted agent gateway] -.->|bounded observations and repairs| API
+    Agent[Restricted runbook Job] -.->|bounded observations and repairs| API
 ```
 
 The coding assistant building this repository is different from the runtime
@@ -85,14 +86,15 @@ rackops lab down
 
 `up` creates only the `rackops` cluster and refuses to adopt an existing one.
 `inject` accepts `--scenario bad_redis_host`, `bad_service_port`, `bad_image`,
-`redis_outage`, or `healthy`. These paths are implemented but have not passed a
-real cluster test. It requires a healthy baseline and checks that the injected
+`redis_outage`, or `healthy`. Only the Redis-host path has passed a real cluster
+test so far. Injection requires a healthy baseline and checks that the injected
 fault manifests before returning. The image case records rollout failure and
 whether client requests also failed; these are separate outcomes.
 `recover` restores the recorded host with concurrent-change checks and validates
 requests. `baseline` creates a Job using the restricted `rackops-agent` service
 account; it uses operational clues and verifies any repair with a 60-second
-request window. The Job and its Role still need a live cluster test. `reset`
+request window. The Job passed one live Redis-host repair, but explicit Role
+denials and other cases remain untested. `reset`
 restores the checked-in baseline; `down` removes the disposable cluster.
 Trusted runner recovery is separate from the gateway's field rollback.
 
@@ -136,8 +138,8 @@ not a real Redis integration test. [Results](docs/results.md) report actual chec
 The 60-second checker uses a provisional 500 ms p95 limit. It is not calibrated
 or frozen. `lab recover` uses a short smoke check, not that full window. No
 repair-success percentage, cost comparison, or production reliability claim is
-currently justified. Runtime policy enforcement and independent scenario
-scoring remain later milestones. CI is configured but has not run on GitHub.
+currently justified. Full independent scenario scoring remains a later
+milestone. Fast CI and one manual kind smoke passed on GitHub.
 
 This repository contains original implementation code under the [MIT license](LICENSE);
 no research-framework code was copied. The [research notes](docs/research.md)

@@ -83,6 +83,17 @@ def main() -> None:
         choices=["verified_repair", "healthy_no_action", "escalated"],
         help="Expected decision status for lab baseline (trusted runner check)",
     )
+    lab.add_argument(
+        "--expect-cause",
+        choices=[
+            "bad_dependency_configuration",
+            "bad_service_target_port",
+            "broken_image",
+            "healthy",
+            "unsupported_dependency_outage",
+        ],
+        help="Expected root-cause category for lab baseline (trusted runner check)",
+    )
     args = parser.parse_args()
     try:
         if args.command == "doctor":
@@ -94,7 +105,12 @@ def main() -> None:
         elif args.command == "lab":
             from rackops.lab import run
 
-            result = run(args.action, scenario=args.scenario, expected=args.expect)
+            result = run(
+                args.action,
+                scenario=args.scenario,
+                expected=args.expect,
+                expected_cause=args.expect_cause,
+            )
         else:
             with httpx.Client(
                 base_url=args.url, timeout=2, follow_redirects=False, trust_env=False
