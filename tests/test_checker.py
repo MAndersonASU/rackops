@@ -9,9 +9,20 @@ def test_successful_status_with_wrong_value_is_failed_repair():
         return httpx.Response(200, json={"key": "key", "value": "corrupted"})
 
     with httpx.Client(transport=httpx.MockTransport(corrupt), base_url="http://fixture") as client:
-        result = summarize(request_pair(client, "key", "expected"))
+        samples = request_pair(client, "key", "expected")
+        result = summarize(samples)
     assert result["successes"] == 0
     assert result["passed"] is False
+    assert [sample.reason for sample in samples] == ["incorrect_body", "incorrect_body"]
+
+
+def test_status_failure_reports_code_without_response_content():
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda r: httpx.Response(503, json={"detail": "private"})),
+        base_url="http://fixture",
+    ) as client:
+        samples = request_pair(client, "key", "value")
+    assert [sample.reason for sample in samples] == ["http_status_503", "http_status_503"]
 
 
 def test_superficial_health_endpoint_cannot_prove_recovery():

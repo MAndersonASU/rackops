@@ -21,6 +21,12 @@ def main():
                 key = "load-" + uuid.uuid4().hex[:16]
                 samples.extend(request_pair(client, key, key))
             result = summarize(samples)
+            if args.once:
+                result["failures"] = [
+                    {"method": ("PUT" if index % 2 == 0 else "GET"), "reason": sample.reason}
+                    for index, sample in enumerate(samples)
+                    if not sample.success
+                ]
             print(json.dumps(result), flush=True)
             if args.once:
                 raise SystemExit(0 if result["passed"] else 1)

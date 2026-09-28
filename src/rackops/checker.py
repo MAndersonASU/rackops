@@ -33,8 +33,11 @@ def check_request(client: Client, method: str, key: str, value: str) -> Sample:
     try:
         kwargs = {"json": {"value": value}} if method == "PUT" else {}
         response = client.request(method, f"/items/{key}", **kwargs)
-        success = response.status_code == 200 and response.json() == {"key": key, "value": value}
-        reason = "correct_response" if success else "incorrect_status_or_body"
+        if response.status_code != 200:
+            success, reason = False, f"http_status_{response.status_code}"
+        else:
+            success = response.json() == {"key": key, "value": value}
+            reason = "correct_response" if success else "incorrect_body"
     except (httpx.HTTPError, ValueError):
         success, reason = False, "transport_or_invalid_json"
     return Sample(success, (time.perf_counter() - started) * 1000, reason)
