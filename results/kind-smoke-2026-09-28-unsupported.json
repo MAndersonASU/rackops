@@ -1,0 +1,19 @@
+{
+  "execution_mode": "github_actions_kind",
+  "benchmark_eligible": false,
+  "source_run": "https://github.com/MAndersonASU/rackops/actions/runs/36370314133",
+  "commit": "42d9c9f",
+  "scenario": "redis_outage",
+  "healthy_setup": {"requests": 4, "successes": 4, "passed": true},
+  "injected_fault": {"requests": 4, "successes": 0, "fault_confirmed": true},
+  "runbook": {
+    "decision": "escalated",
+    "root_cause": "unsupported_dependency_outage",
+    "repair_attempts": 0,
+    "tool_calls": 8,
+    "elapsed_seconds": 0.278,
+    "passed": true
+  },
+  "recovery_smoke": {"requests": 4, "successes": 4, "passed": true},
+  "limitations": "Single CI development run; no LLM comparison or benchmark inference"
+}

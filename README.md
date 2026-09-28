@@ -1,9 +1,9 @@
 # RackOps
 
 An evidence-grounded incident-response experiment for a disposable local
-Kubernetes lab. **Work in progress:** one real Redis-host incident and
-restricted runbook repair passed in GitHub Actions kind; the remaining cases
-and LLM comparison are unfinished. No Kubernetes benchmark has been completed.
+Kubernetes lab. **Work in progress:** all three repairable fault families,
+unsupported escalation, and healthy no-op passed in one real GitHub Actions
+kind smoke. The LLM comparison and held-out benchmark are unfinished.
 
 The application stores short-lived values in Redis. The checker sends real
 writes and reads and checks exact responses. The intended question is whether
@@ -86,15 +86,15 @@ rackops lab down
 
 `up` creates only the `rackops` cluster and refuses to adopt an existing one.
 `inject` accepts `--scenario bad_redis_host`, `bad_service_port`, `bad_image`,
-`redis_outage`, or `healthy`. Only the Redis-host path has passed a real cluster
-test so far. Injection requires a healthy baseline and checks that the injected
-fault manifests before returning. The image case records rollout failure and
+`redis_outage`, or `healthy`. All five passed a manual CI kind smoke; laptop
+execution remains unverified. Injection requires a healthy baseline and checks
+that the injected fault manifests before returning. The image case records rollout failure and
 whether client requests also failed; these are separate outcomes.
 `recover` restores the recorded host with concurrent-change checks and validates
 requests. `baseline` creates a Job using the restricted `rackops-agent` service
 account; it uses operational clues and verifies any repair with a 60-second
-request window. The Job passed one live Redis-host repair, but explicit Role
-denials and other cases remain untested. `reset`
+request window. The Job passed all five CI cases, but explicit Role denial
+checks have not yet passed. `reset`
 restores the checked-in baseline; `down` removes the disposable cluster.
 Trusted runner recovery is separate from the gateway's field rollback.
 
@@ -140,6 +140,16 @@ or frozen. `lab recover` uses a short smoke check, not that full window. No
 repair-success percentage, cost comparison, or production reliability claim is
 currently justified. Full independent scenario scoring remains a later
 milestone. Fast CI and one manual kind smoke passed on GitHub.
+
+Build the local selected-results dashboard from the checked-in JSON summaries:
+
+```text
+rackops report
+```
+
+Open `dashboard/index.html`. It is a static replay, labels fixture and live
+kind evidence separately, and does not claim a benchmark result. See
+[demo instructions](docs/demo.md) for a prepared-cluster walkthrough.
 
 This repository contains original implementation code under the [MIT license](LICENSE);
 no research-framework code was copied. The [research notes](docs/research.md)

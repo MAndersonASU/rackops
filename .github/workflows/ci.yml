@@ -31,6 +31,14 @@ jobs:
       - run: python -m pip install -r requirements.lock
       - run: python -m pip install --no-deps -e .
       - run: rackops lab up
+      - name: Verify restricted agent Role
+        run: |
+          account=system:serviceaccount:rackops-lab:rackops-agent
+          kubectl --context kind-rackops -n rackops-lab auth can-i get deployment/rackops-api --as="$account" --quiet
+          kubectl --context kind-rackops -n rackops-lab auth can-i patch deployment/rackops-api --as="$account" --quiet
+          ! kubectl --context kind-rackops -n rackops-lab auth can-i patch deployment/redis --as="$account" --quiet
+          ! kubectl --context kind-rackops -n rackops-lab auth can-i list secrets --as="$account" --quiet
+          ! kubectl --context kind-rackops -n rackops-lab auth can-i patch pods --as="$account" --quiet
       - run: rackops lab inject
       - run: rackops lab baseline --expect verified_repair --expect-cause bad_dependency_configuration --expect-repairs 1
       - run: rackops lab recover

@@ -2,12 +2,12 @@
 
 ## Current milestone
 
-2026-09-27: milestones 1–4 have partial implementations. A manually triggered
-GitHub Actions kind run passed one real Redis-host incident and restricted
-runbook repair on commit `6027e26` (run 36368976410). Other fault families,
-healthy/unsupported decisions, Prometheus queries, laptop setup, and LLM
-strategies still need live integration checks. This single CI smoke is not a
-benchmark or a completed comparison.
+2026-09-27 (2026-09-28 UTC): a manually triggered GitHub Actions kind run
+(36370314133) passed all five development scenarios: three real repairs,
+unsupported escalation with zero repairs, and healthy no-op with zero repairs.
+This is one CI lab smoke, not a held-out benchmark or an LLM comparison.
+Prometheus query contents, laptop setup, explicit RBAC denials, and hosted
+LLM strategies still need checks.
 
 ## Environment facts
 
@@ -32,8 +32,9 @@ benchmark or a completed comparison.
   a real server and exclude all fixture results from benchmark claims.
 - First tested fixture fault is a bad Redis hostname. API liveness is independent of Redis;
   readiness and successful writes/reads require Redis.
-- Kubernetes uses Recreate for this first outage demonstration; revisit strategy
-  when implementing the failed-rollout scenario. It must be scored separately.
+- Kubernetes uses Recreate so the broken-image scenario produced a user-facing
+  outage in the first CI smoke. A different rollout strategy could keep old
+  replicas serving and must be scored separately.
 - Lab CLI is a trusted operator tool, not the future restricted runtime gateway.
   It must never be given to the runtime LLM.
 - Pilot checker: 5 HTTP requests/second, alternating PUT/GET, for 60 seconds;
@@ -51,20 +52,24 @@ benchmark or a completed comparison.
   on failed recovery. This is scripted fault reversal, not harness rollback.
 - Kubernetes manifests for API, Redis, Prometheus, and labeled request generator.
 - Trusted runner now supports bad Redis host, wrong Service target port,
-  unavailable image, Redis shutdown, and healthy cases. All need live checks.
+  unavailable image, Redis shutdown, and healthy cases. All five passed one
+  real CI kind smoke; laptop execution remains unverified.
 - Deterministic runbook rules and a typed gateway with evidence IDs, action
   limits, field restrictions, version checks, JSONL records, and rollback.
 - In-cluster HTTP adapter and namespaced `rackops-agent` Role/RoleBinding;
-  mock-transport tests pass. A real restricted Job repaired the Redis-host
-  fault in CI; explicit Role permission/denial checks and other faults remain.
+  mock-transport tests pass. A real restricted Job handled all five scenarios
+  in CI; explicit Role denial checks are now in the workflow but not yet run.
   Hosted LLM strategies and the full experiment runner are still absent.
 - A restricted runbook Job is wired to the operator CLI. After a proposed
   repair, its trusted checker waits for rollout readiness and probes real
-  writes/reads for 60 seconds; this path is not yet run in a cluster.
+  writes/reads for 60 seconds; all three repair paths passed in CI kind.
 - Basic and structured strategy loops have scripted fake-provider tests. The
   fake is labeled ineligible for benchmark claims and makes zero paid calls.
   Hosted-model transport and live comparison have not been implemented.
-- Fast CI and manually gated kind smoke workflow; one full kind smoke passed.
+- Fast CI and manually gated kind smoke workflow; one full five-case smoke passed.
+- Static results dashboard generator reads selected JSON and labels replay,
+  fixture, live kind, and benchmark eligibility. Six selected records render;
+  no held-out benchmark results are present.
 
 ## Checks and failures
 
@@ -103,35 +108,47 @@ benchmark or a completed comparison.
   and a real Kubernetes cluster on a GitHub Actions runner, not this laptop.
   Fast CI also passed. Latest local suite: **64 tests passed** with Ruff
   lint/format checks; one upstream Starlette warning remains.
+- Run 36369746983 on `363b6f7` passed all three repair families. Its
+  unsupported-fault injection then timed out waiting for `Available=false`
+  after Redis scaled to zero; zero desired replicas can still satisfy that
+  Deployment condition. The runner now waits for zero ready replicas and the
+  fault request check.
+- Run 36370314133 on `42d9c9f` passed all five scenarios in a real kind
+  cluster with Redis. Each repairable fault failed 0/4 smoke requests, was
+  diagnosed with the expected cause, repaired once, passed the full 60-second
+  request window, and recovered to 4/4. Redis outage escalated with zero
+  repairs and healthy state took no action. Fast CI passed. Latest local
+  suite: **67 tests passed**, Ruff lint/format passed, one upstream Starlette
+  warning remains. Selected per-case summaries are in `results/`.
 
 ## Budget and delivery
 
 No API spending cap agreed; zero paid LLM calls and zero API spend.
 The owner authorized automatic GitHub publication on 2026-09-27. Public
 repository `MAndersonASU/rackops` exists, with description, MIT license, and
-topics. Commits through `6027e26` were pushed to `main` and remote
-tracking verified. The first Git transport attempt failed under Windows
+topics. `main` tracks the GitHub remote. The first Git transport attempt failed under Windows
 Schannel; a CA bundle exported from the local Windows trust store allowed a
 verified TLS Git push using the existing GitHub CLI login. TLS verification
-stayed enabled. GitHub Actions fast checks passed, including manual run
-36368976410. Its kind smoke job also passed after two earlier diagnostic
-failures. Selected output is in `results/kind-smoke-2026-09-28.json`.
-No cloud infrastructure provisioned. Source code is under MIT; no framework
+stayed enabled. GitHub Actions fast checks and the full manual five-case kind
+smoke passed in run 36370314133. An explicit Role check has been added to the
+workflow and awaits its first live run.
+No paid cloud infrastructure provisioned; GitHub Actions uses ephemeral hosted
+runners. Source code is under MIT; no framework
 code was copied.
 
 ## Next three actions
 
-1. Diagnose the intermittent 2/4 startup smoke and run the other two repairable
-   faults plus healthy and unsupported cases in kind with Role denial checks.
+1. Run the explicit Role permission/denial checks in CI and investigate the
+   earlier intermittent 2/4 startup smoke if it recurs.
 2. From a normal user terminal, confirm Docker Linux mode and WSL version;
    make Docker, kind, and kubectl available, then run `rackops doctor` locally.
-3. Implement the independent experiment runner and selected results viewer.
-   Add hosted-model transport only after an API budget is agreed.
+3. Implement the independent experiment runner and hosted-model transport,
+   with an agreed API budget before any paid calls or evaluation.
 
 ## Remaining project scope
 
-Hosted LLM transport for the structured/basic loops, full live runbook, runtime RBAC
-integration for all cases, healthy/unsupported live scoring, experiment runner, heldout
-evaluation, dashboard, and final portfolio demo are not complete. The evidence
-ledger and rollback core have offline
-tests only. Do not infer live success from fixtures or draft manifests.
+Hosted LLM transport for the structured/basic loops, a trusted independent
+experiment runner, held-out evaluation, dashboard refinement, and local laptop
+reproduction are incomplete. Explicit Role denials and rollback failure paths
+still need live checks. The evidence ledger and rollback core have offline
+tests. Do not infer benchmark or LLM success from smoke checks.

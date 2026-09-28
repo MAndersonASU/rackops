@@ -67,6 +67,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor", help="Read-only tool checks; never prints authentication data")
     sub.add_parser("demo-fixture", help="Simulated Redis fault and recovery; not a benchmark")
+    report = sub.add_parser("report", help="Build a static replay dashboard from selected results")
+    report.add_argument("--output", type=Path, default=Path("dashboard/index.html"))
     for command in ("smoke", "verify"):
         child = sub.add_parser(command)
         child.add_argument("--url", type=local_url, default="http://127.0.0.1:8000")
@@ -108,6 +110,10 @@ def main() -> None:
             from rackops.fixture_demo import run_demo
 
             result = run_demo()
+        elif args.command == "report":
+            from rackops.report import generate
+
+            result = generate(Path("results"), args.output)
         elif args.command == "lab":
             from rackops.lab import run
 

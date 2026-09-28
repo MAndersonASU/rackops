@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RackOps selected results</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { max-width: 1100px; margin: 0 auto; padding: 2rem;
+      background: #f5f7f8; color: #17202a; }
+    h1 { margin-bottom: .3rem; }
+    .notice { padding: 1rem; background: #fff4d6; border-left: 5px solid #a36b00; }
+    .cards { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+    .card { background: white; padding: 1rem; min-width: 140px; border: 1px solid #dce3e8; }
+    .card strong { display: block; font-size: 2rem; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; background: white; }
+    th, td { padding: .65rem; text-align: left; border-bottom: 1px solid #dce3e8; }
+    th { background: #e7eef2; }
+    tr:hover { background: #f2f8fb; }
+    a { color: #005a9c; }
+  </style>
+</head>
+<body>
+  <h1>RackOps selected results</h1>
+  <p class="notice">Development evidence only. This page replays selected records;
+    opening it does not run a lab or an agent. Fixture data and live kind checks
+    are labeled separately. No LLM comparison or held-out benchmark is reported.</p>
+  <div class="cards">
+    <div class="card"><strong>6</strong>selected records</div>
+    <div class="card"><strong>5</strong>live kind records</div>
+    <div class="card"><strong>1</strong>fixture records</div>
+    <div class="card"><strong>0</strong>benchmark-eligible records</div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Record</th><th>Mode</th><th>Scenario</th><th>Healthy</th>
+    <th>Fault</th><th>Recovery</th><th>Outcome</th><th>Benchmark eligible</th>
+    <th>Source</th></tr></thead>
+    <tbody><tr><td>fixture-demo.json</td><td>fixture</td><td>bad_dependency_configuration</td><td>2/2</td><td>0/2</td><td>2/2</td><td>Scripted fixture recovery</td><td>No</td><td>Local selected record</td></tr>
+<tr><td>kind-smoke-2026-09-28-healthy.json</td><td>github_actions_kind</td><td>healthy</td><td>4/4</td><td>—</td><td>—</td><td>healthy_no_action</td><td>No</td><td><a href="https://github.com/MAndersonASU/rackops/actions/runs/36370314133">CI run</a></td></tr>
+<tr><td>kind-smoke-2026-09-28-image.json</td><td>github_actions_kind</td><td>bad_image</td><td>4/4</td><td>0/4</td><td>4/4</td><td>verified_repair</td><td>No</td><td><a href="https://github.com/MAndersonASU/rackops/actions/runs/36370314133">CI run</a></td></tr>
+<tr><td>kind-smoke-2026-09-28-service.json</td><td>github_actions_kind</td><td>bad_service_port</td><td>4/4</td><td>0/4</td><td>4/4</td><td>verified_repair</td><td>No</td><td><a href="https://github.com/MAndersonASU/rackops/actions/runs/36370314133">CI run</a></td></tr>
+<tr><td>kind-smoke-2026-09-28-unsupported.json</td><td>github_actions_kind</td><td>redis_outage</td><td>4/4</td><td>0/4</td><td>4/4</td><td>escalated</td><td>No</td><td><a href="https://github.com/MAndersonASU/rackops/actions/runs/36370314133">CI run</a></td></tr>
+<tr><td>kind-smoke-2026-09-28.json</td><td>github_actions_kind</td><td>bad_redis_host</td><td>4/4</td><td>0/4</td><td>4/4</td><td>verified_repair</td><td>No</td><td><a href="https://github.com/MAndersonASU/rackops/actions/runs/36368976410">CI run</a></td></tr></tbody>
+  </table></div>
+  <p>Counts are request checks from selected summaries. A single smoke run is
+    not a recovery-rate estimate.</p>
+</body>
+</html>
