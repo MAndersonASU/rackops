@@ -227,6 +227,7 @@ def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_
                             "root_cause": "bad_dependency_configuration",
                         },
                         "repair_attempts": 1,
+                        "tool_calls": 10,
                     }
                 )
                 + "\n"
@@ -248,6 +249,45 @@ def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_
     assert pod["automountServiceAccountToken"] is True
     assert pod["containers"][0]["command"] == ["python", "-m", "rackops.baseline_job"]
     assert "scenario" not in json.dumps(pod)
+
+
+def test_full_window_check_runs_in_fresh_trusted_job(monkeypatch):
+    created = []
+
+    def fake_kube(*args, **kwargs):
+        if args[0] == "create":
+            created.append(json.loads(kwargs["input_data"]))
+            return SimpleNamespace(stdout="")
+        if args[0] == "get":
+            return SimpleNamespace(stdout=json.dumps({"status": {"succeeded": 1}}))
+        if args[0] == "logs":
+            return SimpleNamespace(
+                stdout=json.dumps(
+                    {
+                        "passed": True,
+                        "requests": 300,
+                        "successes": 300,
+                        "requested_duration_seconds": 60,
+                        "duration_seconds": 60,
+                    }
+                )
+            )
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr(lab, "kube", fake_kube)
+    result = lab.request_check(duration_seconds=60)
+    assert result["passed"]
+    job = created[0]
+    assert job["spec"]["activeDeadlineSeconds"] == 90
+    pod = job["spec"]["template"]["spec"]
+    assert pod["automountServiceAccountToken"] is False
+    assert pod["containers"][0]["command"] == [
+        "python",
+        "-m",
+        "rackops.loadgen",
+        "--duration",
+        "60",
+    ]
 
 
 @pytest.mark.parametrize(

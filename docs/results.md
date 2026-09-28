@@ -3,7 +3,7 @@
 No Kubernetes benchmark or LLM evaluation has been run. Real kind smokes
 passed on GitHub Actions runners; they are development integration checks.
 
-Development verification on 2026-09-27: **67 pytest tests passed** on
+Development verification on 2026-09-27: **72 pytest tests passed** on
 Windows/Python 3.12.14. Ruff lint and format checks and `pip check`
 passed. One upstream Starlette TestClient deprecation warning remains.
 The transport test used real HTTP/Redis-protocol sockets with simulated Redis.
@@ -35,6 +35,12 @@ rollout also failed, and with Recreate strategy this smoke observed an outage.
 The unsupported outage was reset by the trusted runner, not repaired by the
 agent. Selected per-case summaries are in `results/`; `rackops report` builds
 `dashboard/index.html` as a clearly labeled replay.
+
+Manual [run 36371065150](https://github.com/MAndersonASU/rackops/actions/runs/36371065150)
+repeated all five cases and passed explicit Kubernetes permission checks for
+the restricted service account: named API Deployment patch was allowed;
+Redis Deployment patch, secret listing, and Pod patch were denied. The new
+`evaluate-dev` command has only offline tests so far.
 
 These are development runs, not a recovery-rate estimate. A prior run
 escalated incorrectly due a runbook rule that has since been fixed. Another

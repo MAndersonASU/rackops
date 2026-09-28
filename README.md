@@ -84,6 +84,13 @@ rackops lab reset
 rackops lab down
 ```
 
+With an existing healthy cluster, `rackops evaluate-dev` runs the five known
+development scenarios serially using the runbook. Repeat `--scenario NAME` to
+select cases. It resets between attempts, performs a fresh 60-second trusted
+request check after the Job, and writes JSONL to ignored
+`results/raw/development.jsonl`.
+This command is not a held-out benchmark and has not yet passed a live CI run.
+
 `up` creates only the `rackops` cluster and refuses to adopt an existing one.
 `inject` accepts `--scenario bad_redis_host`, `bad_service_port`, `bad_image`,
 `redis_outage`, or `healthy`. All five passed a manual CI kind smoke; laptop
@@ -93,8 +100,8 @@ whether client requests also failed; these are separate outcomes.
 `recover` restores the recorded host with concurrent-change checks and validates
 requests. `baseline` creates a Job using the restricted `rackops-agent` service
 account; it uses operational clues and verifies any repair with a 60-second
-request window. The Job passed all five CI cases, but explicit Role denial
-checks have not yet passed. `reset`
+request window. The Job passed all five CI cases, and Kubernetes Role allow/deny
+checks passed in run 36371065150. `reset`
 restores the checked-in baseline; `down` removes the disposable cluster.
 Trusted runner recovery is separate from the gateway's field rollback.
 

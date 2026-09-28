@@ -69,6 +69,14 @@ def main() -> None:
     sub.add_parser("demo-fixture", help="Simulated Redis fault and recovery; not a benchmark")
     report = sub.add_parser("report", help="Build a static replay dashboard from selected results")
     report.add_argument("--output", type=Path, default=Path("dashboard/index.html"))
+    evaluate = sub.add_parser(
+        "evaluate-dev", help="Serial real-lab runbook checks; not a benchmark"
+    )
+    evaluate.add_argument(
+        "--scenario",
+        action="append",
+        choices=["bad_redis_host", "bad_service_port", "bad_image", "redis_outage", "healthy"],
+    )
     for command in ("smoke", "verify"):
         child = sub.add_parser(command)
         child.add_argument("--url", type=local_url, default="http://127.0.0.1:8000")
@@ -114,6 +122,10 @@ def main() -> None:
             from rackops.report import generate
 
             result = generate(Path("results"), args.output)
+        elif args.command == "evaluate-dev":
+            from rackops.experiment import run_development
+
+            result = run_development(Path("results/raw/development.jsonl"), args.scenario)
         elif args.command == "lab":
             from rackops.lab import run
 

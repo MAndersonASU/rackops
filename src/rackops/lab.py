@@ -142,8 +142,10 @@ def readiness():
         kube("rollout", "status", f"deployment/{name}", "--timeout=120s", timeout=140)
 
 
-def request_check() -> dict:
+def request_check(duration_seconds: int | None = None) -> dict:
     """Run a fresh job against the Service, not a port-forward bound to an old Pod."""
+    if duration_seconds is not None and duration_seconds not in range(1, 121):
+        raise ValueError("Request check duration must be 1..120 seconds")
     name = "rackops-check-" + uuid.uuid4().hex[:8]
     job = {
         "apiVersion": "batch/v1",
@@ -151,7 +153,7 @@ def request_check() -> dict:
         "metadata": {"name": name, "namespace": NAMESPACE, "labels": LABEL},
         "spec": {
             "backoffLimit": 0,
-            "activeDeadlineSeconds": 30,
+            "activeDeadlineSeconds": 30 if duration_seconds is None else duration_seconds + 30,
             "ttlSecondsAfterFinished": 120,
             "template": {
                 "metadata": {"labels": LABEL},
@@ -163,7 +165,13 @@ def request_check() -> dict:
                             "name": "check",
                             "image": "rackops-api:dev",
                             "imagePullPolicy": "Never",
-                            "command": ["python", "-m", "rackops.loadgen", "--once"],
+                            "command": [
+                                "python",
+                                "-m",
+                                "rackops.loadgen",
+                                "--once" if duration_seconds is None else "--duration",
+                                *([] if duration_seconds is None else [str(duration_seconds)]),
+                            ],
                             "resources": {
                                 "requests": {"cpu": "25m", "memory": "64Mi"},
                                 "limits": {"cpu": "250m", "memory": "128Mi"},
@@ -176,7 +184,7 @@ def request_check() -> dict:
     }
     kube("create", "-f", "-", input_data=json.dumps(job))
     try:
-        deadline = time.monotonic() + 40
+        deadline = time.monotonic() + (40 if duration_seconds is None else duration_seconds + 40)
         while time.monotonic() < deadline:
             obj = json.loads(kube("get", "job", name, "-o", "json").stdout)
             status = obj.get("status", {})
@@ -184,8 +192,20 @@ def request_check() -> dict:
                 logs = kube("logs", f"job/{name}", "--tail=1").stdout
                 try:
                     result = json.loads(logs)
-                    if result.get("requests") != 4 or type(result.get("passed")) is not bool:
+                    if type(result) is not dict or type(result.get("passed")) is not bool:
                         raise ValueError("Invalid checker output")
+                    if duration_seconds is None:
+                        if result.get("requests") != 4:
+                            raise ValueError("Invalid smoke request count")
+                    elif (
+                        result.get("requested_duration_seconds") != duration_seconds
+                        or result.get("duration_seconds", 0) < duration_seconds
+                        or type(result.get("requests")) is not int
+                        or not 0 <= result["requests"] <= duration_seconds * 5
+                        or type(result.get("successes")) is not int
+                        or not 0 <= result["successes"] <= result["requests"]
+                    ):
+                        raise ValueError("Invalid full-window checker output")
                     return result
                 except (ValueError, TypeError) as exc:
                     raise RuntimeError(
@@ -248,7 +268,11 @@ def run_baseline_job() -> dict:
                 except (ValueError, IndexError) as exc:
                     raise RuntimeError("Baseline Job did not return a valid result") from exc
                 if (
-                    result.get("execution_mode") != "kubernetes"
+                    type(result) is not dict
+                    or type(result.get("decision")) is not dict
+                    or type(result.get("repair_attempts")) is not int
+                    or type(result.get("tool_calls")) is not int
+                    or result.get("execution_mode") != "kubernetes"
                     or result.get("strategy") != "runbook"
                 ):
                     raise RuntimeError("Baseline Job returned an unexpected result")

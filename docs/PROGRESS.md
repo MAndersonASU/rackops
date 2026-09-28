@@ -6,8 +6,8 @@
 (36370314133) passed all five development scenarios: three real repairs,
 unsupported escalation with zero repairs, and healthy no-op with zero repairs.
 This is one CI lab smoke, not a held-out benchmark or an LLM comparison.
-Prometheus query contents, laptop setup, explicit RBAC denials, and hosted
-LLM strategies still need checks.
+Explicit Role allow/deny checks also passed in run 36371065150. Prometheus
+query contents, laptop setup, and hosted LLM strategies still need checks.
 
 ## Environment facts
 
@@ -58,7 +58,7 @@ LLM strategies still need checks.
   limits, field restrictions, version checks, JSONL records, and rollback.
 - In-cluster HTTP adapter and namespaced `rackops-agent` Role/RoleBinding;
   mock-transport tests pass. A real restricted Job handled all five scenarios
-  in CI; explicit Role denial checks are now in the workflow but not yet run.
+  in CI; explicit Role allow/deny checks passed in run 36371065150.
   Hosted LLM strategies and the full experiment runner are still absent.
 - A restricted runbook Job is wired to the operator CLI. After a proposed
   repair, its trusted checker waits for rollout readiness and probes real
@@ -70,6 +70,10 @@ LLM strategies still need checks.
 - Static results dashboard generator reads selected JSON and labels replay,
   fixture, live kind, and benchmark eligibility. Six selected records render;
   no held-out benchmark results are present.
+- Trusted `evaluate-dev` runner resets between known scenarios, keeps hidden
+  truth outside the runtime Job, scores its decision against a separate 60-second
+  request-check Job, and stores JSONL under ignored `results/raw/`. It has
+  offline boundary tests, but the command itself has not yet run live.
 
 ## Checks and failures
 
@@ -120,6 +124,11 @@ LLM strategies still need checks.
   repairs and healthy state took no action. Fast CI passed. Latest local
   suite: **67 tests passed**, Ruff lint/format passed, one upstream Starlette
   warning remains. Selected per-case summaries are in `results/`.
+- Run 36371065150 on `575a636` again passed all five scenarios and explicit
+  Kubernetes RBAC checks: API Deployment patch allowed; Redis Deployment patch,
+  secret listing, and Pod patch denied. The independent development runner is
+  being added after that run. Latest local suite: **72 tests passed**, Ruff
+  lint/format and `pip check` passed; one upstream Starlette warning remains.
 
 ## Budget and delivery
 
@@ -129,21 +138,20 @@ repository `MAndersonASU/rackops` exists, with description, MIT license, and
 topics. `main` tracks the GitHub remote. The first Git transport attempt failed under Windows
 Schannel; a CA bundle exported from the local Windows trust store allowed a
 verified TLS Git push using the existing GitHub CLI login. TLS verification
-stayed enabled. GitHub Actions fast checks and the full manual five-case kind
-smoke passed in run 36370314133. An explicit Role check has been added to the
-workflow and awaits its first live run.
+stayed enabled. GitHub Actions fast checks, the full manual five-case kind
+smoke, and the explicit Role checks passed in run 36371065150.
 No paid cloud infrastructure provisioned; GitHub Actions uses ephemeral hosted
 runners. Source code is under MIT; no framework
 code was copied.
 
 ## Next three actions
 
-1. Run the explicit Role permission/denial checks in CI and investigate the
-   earlier intermittent 2/4 startup smoke if it recurs.
+1. Run `evaluate-dev` in CI, inspect its separate 60-second checker records,
+   and investigate the earlier intermittent 2/4 startup smoke if it recurs.
 2. From a normal user terminal, confirm Docker Linux mode and WSL version;
    make Docker, kind, and kubectl available, then run `rackops doctor` locally.
-3. Implement the independent experiment runner and hosted-model transport,
-   with an agreed API budget before any paid calls or evaluation.
+3. Add hosted-model transport, calibrate and freeze the recovery threshold,
+   then plan the holdout with an agreed API budget before any paid calls.
 
 ## Remaining project scope
 

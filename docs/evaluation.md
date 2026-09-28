@@ -1,4 +1,10 @@
-# Evaluation protocol (planned, not yet executed)
+# Evaluation protocol (held-out comparison not yet executed)
+
+A five-case development smoke passed in GitHub Actions kind on 2026-09-28 UTC.
+It is not the holdout below. A trusted serial runner now implements separate
+setup, agent, independent request check, and reset records for the runbook,
+but that runner itself still needs a live CI check. The LLM strategies have
+only scripted fake-provider tests. No model comparison has occurred.
 
 Each attempt will start from a checked healthy baseline. The trusted test
 runner injects one fault and confirms it manifested before starting a strategy.

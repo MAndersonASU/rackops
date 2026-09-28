@@ -53,5 +53,6 @@ jobs:
       - run: rackops lab recover
       - run: rackops lab inject --scenario healthy
       - run: rackops lab baseline --expect healthy_no_action --expect-cause healthy --expect-repairs 0
+      - run: rackops evaluate-dev --scenario bad_redis_host --scenario healthy --scenario redis_outage
       - if: always()
         run: rackops lab down
