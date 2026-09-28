@@ -154,7 +154,7 @@ read Kubernetes Secrets or access scenario truth. See the official
 [Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs),
 and [current pricing](https://developers.openai.com/api/docs/pricing).
 
-RackOps reads the six explicit settings in `.env.example` from the process
+RackOps reads the seven explicit settings in `.env.example` from the process
 environment. It does not automatically read a `.env` file. Select a model that
 supports strict Structured Outputs, supply its current standard input/output
 prices per million tokens, and set the maximum total USD for one command. An

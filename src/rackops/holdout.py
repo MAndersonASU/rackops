@@ -112,6 +112,7 @@ def _provider_budget() -> float:
 def _provider_config_hash() -> str:
     names = (
         "RACKOPS_LLM_MODEL",
+        "RACKOPS_LLM_REASONING_EFFORT",
         "RACKOPS_LLM_BUDGET_USD",
         "RACKOPS_LLM_INPUT_USD_PER_MILLION",
         "RACKOPS_LLM_OUTPUT_USD_PER_MILLION",

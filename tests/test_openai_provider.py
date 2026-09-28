@@ -103,6 +103,7 @@ def test_structured_response_builds_bounded_nonstored_request_and_tracks_usage()
     payload = json.loads(requests[0].content)
     assert payload["store"] is False
     assert payload["model"] == "fixture-model"
+    assert payload["reasoning"] == {"effort": "none"}
     assert payload["text"]["format"]["strict"] is True
     assert "ground_truth" not in payload["input"]
 
@@ -203,6 +204,7 @@ def test_environment_factory_parses_model_prices_and_smaller_runner_cap():
         {
             "OPENAI_API_KEY": "fixture-secret",
             "RACKOPS_LLM_MODEL": "owner-model",
+            "RACKOPS_LLM_REASONING_EFFORT": "low",
             "RACKOPS_LLM_BUDGET_USD": "5.0",
             "RACKOPS_LLM_INPUT_USD_PER_MILLION": "1.25",
             "RACKOPS_LLM_OUTPUT_USD_PER_MILLION": "2.5",
@@ -215,6 +217,7 @@ def test_environment_factory_parses_model_prices_and_smaller_runner_cap():
         assert hosted.model_id == "owner-model"
         assert hosted.budget.cap_usd == 0.75
         assert hosted.max_attempts == 1
+        assert hosted.reasoning_effort == "low"
     finally:
         client.close()
 
