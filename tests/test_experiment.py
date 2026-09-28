@@ -28,7 +28,7 @@ def test_claimed_repair_fails_when_trusted_check_fails(monkeypatch, tmp_path):
     monkeypatch.setattr(
         experiment.lab,
         "inject",
-        lambda scenario: {"fault_confirmed": True, "scenario": scenario},
+        lambda scenario, **kwargs: {"fault_confirmed": True, "scenario": scenario},
     )
     monkeypatch.setattr(
         experiment.lab,
@@ -66,7 +66,7 @@ def test_invalid_setup_is_separate_and_never_runs_agent(monkeypatch, tmp_path):
     monkeypatch.setattr(
         experiment.lab,
         "inject",
-        lambda scenario: {"fault_confirmed": False, "scenario": scenario},
+        lambda scenario, **kwargs: {"fault_confirmed": False, "scenario": scenario},
     )
     monkeypatch.setattr(
         experiment.lab, "run_baseline_job", lambda: pytest.fail("Invalid setup reached agent")

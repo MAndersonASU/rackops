@@ -87,6 +87,19 @@ def main() -> None:
         "calibrate-dev", help="Measure repeated healthy windows; does not freeze a criterion"
     )
     calibrate.add_argument("--runs", type=int, choices=range(3, 11), default=5)
+    holdout = sub.add_parser(
+        "evaluate-holdout", help="Resume the frozen reduced 60-attempt comparison"
+    )
+    holdout.add_argument(
+        "--manifest",
+        type=Path,
+        default=Path("evaluation/reduced-holdout-v1.json"),
+    )
+    holdout.add_argument(
+        "--records",
+        type=Path,
+        default=Path("results/raw/reduced-holdout-v1.jsonl"),
+    )
     for command in ("smoke", "verify"):
         child = sub.add_parser(command)
         child.add_argument("--url", type=local_url, default="http://127.0.0.1:8000")
@@ -144,6 +157,10 @@ def main() -> None:
             from rackops.calibration import run
 
             result = run(Path("results/raw/calibration.json"), args.runs)
+        elif args.command == "evaluate-holdout":
+            from rackops.holdout import run
+
+            result = run(args.manifest, args.records)
         elif args.command == "lab":
             from rackops.lab import run
 

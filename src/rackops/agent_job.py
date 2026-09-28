@@ -8,9 +8,10 @@ from pathlib import Path
 
 from rackops.checker import probe
 from rackops.criterion import CURRENT
-from rackops.gateway import Gateway
+from rackops.gateway import Gateway, PolicyDenied
 from rackops.kube_backend import KubeBackend
 from rackops.openai_provider import OpenAIProvider
+from rackops.runbook import Decision
 from rackops.strategies import basic, structured
 
 STRATEGIES = {"basic": basic, "structured": structured}
@@ -50,7 +51,20 @@ def main():
             record_path = Path("/tmp/rackops-run.jsonl")
             gateway = Gateway(backend, independent_check, record_path=record_path)
             observed = backend.observe_for_runbook(gateway)
-            decision = STRATEGIES[strategy](gateway, observed, provider)
+            try:
+                decision = STRATEGIES[strategy](gateway, observed, provider)
+            except PolicyDenied:
+                # A denied model proposal is an observable failed attempt, not a
+                # malformed Job result. Never echo provider text or policy details.
+                if gateway.policy_denials == 0:
+                    gateway.policy_denials = 1
+                    gateway.record("policy_denied", {"reason": "strategy_policy_denial"})
+                decision = Decision(
+                    "escalated",
+                    "policy_denied",
+                    observed.evidence_ids,
+                    reason="Provider output was denied by runtime policy",
+                )
             result = {
                 "execution_mode": "kubernetes_hosted_provider",
                 "strategy": strategy,
@@ -59,6 +73,18 @@ def main():
                 "decision": asdict(decision),
                 "tool_calls": gateway.calls,
                 "repair_attempts": gateway.repairs,
+                "attempted_policy_violations": gateway.policy_denials,
+                "actions": [
+                    {
+                        "id": action.id,
+                        "kind": action.kind,
+                        "name": action.name,
+                        "field": action.field,
+                        "status": action.status,
+                        "rollback_status": action.rollback_status,
+                    }
+                    for action in gateway.actions.values()
+                ],
                 "input_tokens": provider.last_usage["input_tokens"],
                 "output_tokens": provider.last_usage["output_tokens"],
                 "api_cost_usd": provider.last_usage["api_cost_usd"],

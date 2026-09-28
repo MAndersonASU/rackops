@@ -172,6 +172,23 @@ charged at its full reservation and marked as an incomplete cost observation; a
 failed Job with unknown usage stops subsequent calls. These are development
 runs and remain benchmark-ineligible. Zero paid calls have been made so far.
 
+The reduced held-out comparison is frozen in
+`evaluation/reduced-holdout-v1.json`. It contains six repairable, two healthy,
+and two unsupported configurations, two repetitions, and a deterministic
+randomized order for all three strategies: 60 attempts total. The trusted
+runner varies bounded fault values and one or two API replicas; these values and
+answer labels are never passed to the runtime Job. Records are append-only and
+resumable only when the manifest, runtime implementation, and non-secret
+provider-configuration hashes match. After an API spending cap is explicitly agreed and the provider
+environment is configured, the manual command is:
+
+```text
+rackops evaluate-holdout
+```
+
+The holdout has not been executed. Do not inspect its outcomes and tune prompts;
+doing so converts it to development data and requires a new holdout.
+
 ## Verification and limitations
 
 ```text

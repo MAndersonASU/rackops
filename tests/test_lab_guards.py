@@ -174,6 +174,53 @@ def test_service_port_and_image_repair_use_version_preconditions(monkeypatch):
     assert json.loads(calls[-1][-1])[-1]["path"] == path
 
 
+def test_holdout_workload_variation_is_bounded_and_version_checked(monkeypatch):
+    app = {
+        "metadata": {"uid": "api-a", "resourceVersion": "8"},
+        "spec": {
+            "replicas": 1,
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "api",
+                            "image": "rackops-api:dev",
+                            "env": [{"name": "RACKOPS_REDIS_HOST", "value": "redis"}],
+                        }
+                    ]
+                }
+            },
+        },
+    }
+    calls = []
+    monkeypatch.setattr(lab, "deployment", lambda: app)
+    monkeypatch.setattr(lab, "kube", lambda *args, **kwargs: calls.append((args, kwargs)))
+    lab.set_api_replicas(2)
+    patch = json.loads(calls[0][0][-1])
+    assert patch[:2] == [
+        {"op": "test", "path": "/metadata/uid", "value": "api-a"},
+        {"op": "test", "path": "/metadata/resourceVersion", "value": "8"},
+    ]
+    assert patch[-1] == {"op": "replace", "path": "/spec/replicas", "value": 2}
+    with pytest.raises(ValueError):
+        lab.set_api_replicas(3)
+
+
+@pytest.mark.parametrize(
+    "scenario,fault",
+    [
+        ("bad_redis_host", "production-database"),
+        ("bad_service_port", 8000),
+        ("bad_image", "external/image:latest"),
+        ("redis_outage", 1),
+        ("healthy", "fault"),
+    ],
+)
+def test_holdout_fault_values_are_strictly_allowlisted(scenario, fault):
+    with pytest.raises(ValueError):
+        lab.validate_fault(scenario, fault)
+
+
 def test_healthy_scenario_executes_no_field_mutation(monkeypatch, tmp_path):
     monkeypatch.setattr(lab, "STATE", tmp_path / "incident.json")
     monkeypatch.setattr(lab, "guard", lambda: None)

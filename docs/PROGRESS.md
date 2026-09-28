@@ -90,6 +90,10 @@ need checks.
   ignored raw record plus an explicitly unfrozen threshold candidate. Run
   36374095023 completed five windows; the fixed formula selected 50 ms and the
   reviewed result is now frozen separately as `rackops-recovery-v1`.
+- The reduced holdout manifest is frozen at 10 configurations, 2 repetitions,
+  and 3 strategies (60 scheduled attempts). Its deterministic schedule varies
+  bounded fault values and API replicas, randomizes strategy order, and supports
+  only hash-matched resume. No holdout attempt has run.
 
 ## Checks and failures
 
@@ -177,8 +181,8 @@ code was copied.
 ## Next three actions
 
 1. Revalidate all live scenarios against frozen `rackops-recovery-v1`.
-2. Define and freeze the reduced holdout configuration set without examining
-   strategy results.
+2. After an explicit API cap and model configuration, execute the frozen reduced
+   holdout without tuning on its outcomes.
 3. From a normal user terminal, confirm Docker Linux mode and WSL version;
    make Docker, kind, and kubectl available, then run `rackops doctor` locally.
 

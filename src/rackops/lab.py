@@ -20,6 +20,12 @@ NAMESPACE = "rackops-lab"
 STATE = ROOT / "work" / "lab-incident.json"
 LABEL = {"rackops.io/lab": "rackops"}
 SCENARIOS = ("bad_redis_host", "bad_service_port", "bad_image", "redis_outage", "healthy")
+DEFAULT_FAULTS = {
+    "bad_redis_host": "redis-invalid",
+    "bad_service_port": 6553,
+    "bad_image": "rackops-api:missing",
+    "redis_outage": 0,
+}
 PROVIDER_ENV = (
     "OPENAI_API_KEY",
     "RACKOPS_LLM_MODEL",
@@ -103,6 +109,13 @@ def image_location(obj):
     return "/spec/template/spec/containers/0/image", containers[0]["image"]
 
 
+def app_replicas_location(obj):
+    value = obj["spec"]["replicas"]
+    if type(value) is not int or not 1 <= value <= 2:
+        raise RuntimeError("Unexpected lab API replica count")
+    return "/spec/replicas", value
+
+
 def replicas_location(obj):
     value = obj["spec"]["replicas"]
     if type(value) is not int or not 0 <= value <= 1:
@@ -112,7 +125,11 @@ def replicas_location(obj):
 
 def patch_field(kind, name, obj, path, before, value):
     if (kind, name) == ("deployment", "rackops-api"):
-        allowed = path == host_location(obj)[0] or path == image_location(obj)[0]
+        allowed = (
+            path == host_location(obj)[0]
+            or path == image_location(obj)[0]
+            or (path == "/spec/replicas" and path == app_replicas_location(obj)[0])
+        )
     elif (kind, name) == ("service", "rackops-api"):
         allowed = path == service_port_location(obj)[0]
     elif (kind, name) == ("deployment", "redis"):
@@ -148,6 +165,47 @@ def host_location(obj):
 def patch_host(obj, value):
     path, before = host_location(obj)
     patch_field("deployment", "rackops-api", obj, path, before, value)
+
+
+def set_api_replicas(value: int):
+    """Apply a bounded trusted-runner workload variation outside agent permissions."""
+    if type(value) is not int or value not in {1, 2}:
+        raise ValueError("Holdout API replicas must be 1 or 2")
+    obj = deployment()
+    path, before = app_replicas_location(obj)
+    if before != value:
+        patch_field("deployment", "rackops-api", obj, path, before, value)
+        kube("rollout", "status", "deployment/rackops-api", "--timeout=120s", timeout=140)
+
+
+def validate_fault(scenario: str, fault):
+    if scenario == "healthy":
+        if fault is not None:
+            raise ValueError("Healthy holdout cases cannot specify a fault")
+        return None
+    if scenario not in DEFAULT_FAULTS:
+        raise ValueError("Unknown incident scenario")
+    value = DEFAULT_FAULTS[scenario] if fault is None else fault
+    valid = (
+        scenario == "bad_redis_host"
+        and type(value) is str
+        and (value == "redis-invalid" or re.fullmatch(r"redis-unreachable-[a-z0-9-]{1,32}", value))
+        or scenario == "bad_service_port"
+        and type(value) is int
+        and 1 <= value <= 65535
+        and value != 8000
+        or scenario == "bad_image"
+        and type(value) is str
+        and (
+            value == "rackops-api:missing"
+            or re.fullmatch(r"rackops-api:holdout-missing-[a-z0-9-]{1,24}", value)
+        )
+        or scenario == "redis_outage"
+        and value == 0
+    )
+    if not valid:
+        raise ValueError("Fault variation is outside the trusted holdout allowlist")
+    return value
 
 
 def readiness():
@@ -548,12 +606,14 @@ def wait_for_fault(scenario):
         raise RuntimeError("Invalid setup: unavailable image has no image failure status")
 
 
-def inject(scenario="bad_redis_host"):
+def inject(scenario="bad_redis_host", *, fault=None, api_replicas=1):
     if scenario not in SCENARIOS:
         raise ValueError("Unknown incident scenario")
     guard()
     if STATE.exists():
         raise RuntimeError("An incident snapshot already exists; recover or reset it first")
+    if api_replicas != 1:
+        set_api_replicas(api_replicas)
     baseline = request_check()
     if not baseline["passed"]:
         raise RuntimeError("Invalid setup: baseline requests are not healthy")
@@ -568,12 +628,7 @@ def inject(scenario="bad_redis_host"):
         }
     kind, name, obj, location = scenario_resource(scenario)
     path, before = location(obj)
-    fault = {
-        "bad_redis_host": "redis-invalid",
-        "bad_service_port": 6553,
-        "bad_image": "rackops-api:missing",
-        "redis_outage": 0,
-    }[scenario]
+    fault = validate_fault(scenario, fault)
     if before == fault:
         raise RuntimeError("Invalid setup: baseline already matches the fault")
     snapshot = {

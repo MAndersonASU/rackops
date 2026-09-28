@@ -106,6 +106,7 @@ class Gateway:
         self.started = time.monotonic()
         self.calls = 0
         self.repairs = 0
+        self.policy_denials = 0
         self.evidence: dict[str, Evidence] = {}
         self.actions: dict[str, Action] = {}
         self.pending: str | None = None
@@ -121,15 +122,20 @@ class Gateway:
 
     def count_call(self):
         if time.monotonic() - self.started >= self.max_seconds:
-            raise PolicyDenied("Incident time budget exhausted")
+            self.deny("Incident time budget exhausted")
         if self.calls >= self.max_calls:
-            raise PolicyDenied("Tool-call budget exhausted")
+            self.deny("Tool-call budget exhausted")
         self.calls += 1
+
+    def deny(self, reason: str):
+        self.policy_denials += 1
+        self.record("policy_denied", {"reason": reason})
+        raise PolicyDenied(reason)
 
     def add_evidence(self, source: str, content: str) -> Evidence:
         self.count_call()
         if source not in SOURCES or type(content) is not str or len(content) > MAX_EVIDENCE_CHARS:
-            raise PolicyDenied("Invalid evidence source or size")
+            self.deny("Invalid evidence source or size")
         evidence = Evidence(
             f"E{len(self.evidence) + 1:04d}",
             datetime.now(UTC).isoformat(),
@@ -145,34 +151,37 @@ class Gateway:
     ) -> Action:
         self.count_call()
         if (kind, name, field) not in FIELDS:
-            raise PolicyDenied("Resource or field is outside the runtime allowlist")
-        validate_value(field, value)
+            self.deny("Resource or field is outside the runtime allowlist")
+        try:
+            validate_value(field, value)
+        except PolicyDenied as exc:
+            self.deny(str(exc))
         if (
             not evidence_ids
             or len(evidence_ids) > 8
             or any(e not in self.evidence for e in evidence_ids)
             or len(set(evidence_ids)) != len(evidence_ids)
         ):
-            raise PolicyDenied("Action requires distinct existing evidence IDs")
+            self.deny("Action requires distinct existing evidence IDs")
         if type(decision) is not str or not 1 <= len(decision) <= 240:
-            raise PolicyDenied("Action requires a short decision summary")
+            self.deny("Action requires a short decision summary")
         if self.pending is not None or self.repairs >= self.max_repairs:
-            raise PolicyDenied("A change is pending or repair budget exhausted")
+            self.deny("A change is pending or repair budget exhausted")
         before = self.backend.read_field(kind, name, field)
         if (before.kind, before.name, before.field) != (kind, name, field):
-            raise PolicyDenied("Backend returned the wrong field")
+            self.deny("Backend returned the wrong field")
         if (
             before.context != CONTEXT
             or before.namespace != NAMESPACE
             or not before.uid
             or not before.resource_version
         ):
-            raise PolicyDenied("Lab resource identity check failed")
+            self.deny("Lab resource identity check failed")
         if value == before.value:
-            raise PolicyDenied("No-op mutations are denied")
+            self.deny("No-op mutations are denied")
         signature = (kind, name, field, str(value))
         if signature in self.failed_signatures:
-            raise PolicyDenied("Repeated identical failed repair is denied")
+            self.deny("Repeated identical failed repair is denied")
         action = Action(
             f"A{len(self.actions) + 1:04d}",
             kind,
@@ -191,12 +200,12 @@ class Gateway:
         self.count_call()
         action = self.actions.get(action_id)
         if action is None or action.status != "proposed":
-            raise PolicyDenied("Unknown or already applied proposal")
+            self.deny("Unknown or already applied proposal")
         if self.pending is not None or self.repairs >= self.max_repairs:
-            raise PolicyDenied("A change is pending or repair budget exhausted")
+            self.deny("A change is pending or repair budget exhausted")
         current = self.backend.read_field(action.kind, action.name, action.field)
         if current != action.before:
-            raise PolicyDenied("Resource changed since proposal; re-observe before repair")
+            self.deny("Resource changed since proposal; re-observe before repair")
         self.repairs += 1
         self.pending = action_id
         try:
@@ -209,7 +218,7 @@ class Gateway:
                 CONTEXT,
                 NAMESPACE,
             ) or after.value != action.proposed_value:
-                raise PolicyDenied("Backend did not confirm the approved field change")
+                self.deny("Backend did not confirm the approved field change")
             action.after = after
             action.status = "applied_pending_verification"
             self.record("applied", {"action": asdict(action)})
@@ -232,10 +241,10 @@ class Gateway:
             or action_id != self.pending
             or action.status != "applied_pending_verification"
         ):
-            raise PolicyDenied("No matching pending action")
+            self.deny("No matching pending action")
         independent_result = self.checker()
         if type(independent_result.get("passed")) is not bool:
-            raise PolicyDenied("Invalid independent verification result")
+            self.deny("Invalid independent verification result")
         self.record("verification", {"action_id": action_id, "result": independent_result})
         if independent_result["passed"]:
             action.status = "verified"
@@ -251,7 +260,7 @@ class Gateway:
         # Safety rollback stays available after the agent's call/time budget.
         action = self.actions.get(action_id)
         if action is None or action_id != self.pending or action.status != "verification_failed":
-            raise PolicyDenied("Only a failed pending repair may be rolled back")
+            self.deny("Only a failed pending repair may be rolled back")
         current = self.backend.read_field(action.kind, action.name, action.field)
         if action.after is None or (
             current.kind,
@@ -272,7 +281,7 @@ class Gateway:
         ):
             action.rollback_status = "conflict"
             self.record("rollback_conflict", {"action_id": action_id})
-            raise PolicyDenied("Concurrent change prevents safe rollback")
+            self.deny("Concurrent change prevents safe rollback")
         try:
             restored = self.backend.change_field(current, action.before.value)
             if (
@@ -281,10 +290,10 @@ class Gateway:
                 or restored.context != CONTEXT
                 or restored.namespace != NAMESPACE
             ):
-                raise PolicyDenied("Rollback was not independently read back")
+                self.deny("Rollback was not independently read back")
             read_back = self.backend.read_field(action.kind, action.name, action.field)
             if read_back != restored:
-                raise PolicyDenied("Rollback read-back verification failed")
+                self.deny("Rollback read-back verification failed")
             action.rollback_status = "verified"
             action.status = "rolled_back"
             self.pending = None

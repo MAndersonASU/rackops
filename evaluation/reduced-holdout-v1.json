@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "plan_id": "rackops-reduced-holdout-v1",
+  "status": "frozen",
+  "seed": 20260928,
+  "repetitions": 2,
+  "strategies": ["runbook", "basic", "structured"],
+  "criterion": {
+    "name": "rackops-recovery-v1",
+    "duration_seconds": 60,
+    "requests_per_second": 5,
+    "minimum_success_rate": 0.99,
+    "latency_limit_ms": 50.0
+  },
+  "cases": [
+    {"id": "cfg-01", "scenario": "bad_redis_host", "fault": "redis-unreachable-alpha", "api_replicas": 1},
+    {"id": "cfg-02", "scenario": "bad_redis_host", "fault": "redis-unreachable-bravo", "api_replicas": 2},
+    {"id": "cfg-03", "scenario": "bad_service_port", "fault": 6553, "api_replicas": 1},
+    {"id": "cfg-04", "scenario": "bad_service_port", "fault": 6554, "api_replicas": 2},
+    {"id": "cfg-05", "scenario": "bad_image", "fault": "rackops-api:holdout-missing-alpha", "api_replicas": 1},
+    {"id": "cfg-06", "scenario": "bad_image", "fault": "rackops-api:holdout-missing-bravo", "api_replicas": 2},
+    {"id": "cfg-07", "scenario": "healthy", "fault": null, "api_replicas": 1},
+    {"id": "cfg-08", "scenario": "healthy", "fault": null, "api_replicas": 2},
+    {"id": "cfg-09", "scenario": "redis_outage", "fault": 0, "api_replicas": 1},
+    {"id": "cfg-10", "scenario": "redis_outage", "fault": 0, "api_replicas": 2}
+  ]
+}

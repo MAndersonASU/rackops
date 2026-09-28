@@ -56,7 +56,12 @@ def score(case: Case, agent_result: dict, independent_check: dict) -> dict:
         and independent_check.get("duration_seconds", 0) >= CURRENT.duration_seconds
         and independent_check.get("requests", 0) > 0
         and (
-            independent_check.get("successes", 0) >= 297
+            independent_check.get("successes", 0)
+            >= math.ceil(
+                CURRENT.duration_seconds
+                * CURRENT.requests_per_second
+                * CURRENT.minimum_success_rate
+            )
             if case.application_should_pass
             else independent_check.get("successes") == 0
         )
@@ -71,23 +76,35 @@ def score(case: Case, agent_result: dict, independent_check: dict) -> dict:
     }
 
 
-def run_case(case: Case, strategy: str = "runbook", *, cap_usd: float | None = None) -> dict:
+def run_case(
+    case: Case,
+    strategy: str = "runbook",
+    *,
+    cap_usd: float | None = None,
+    case_id: str | None = None,
+    fault=None,
+    api_replicas: int = 1,
+    execution_mode: str = "kubernetes_development",
+    benchmark_eligible: bool = False,
+) -> dict:
     """Reset before and after an attempt, recording invalid setups separately."""
     record = {
         "recorded_at": datetime.now(UTC).isoformat(),
-        "execution_mode": "kubernetes_development",
-        "benchmark_eligible": False,
+        "execution_mode": execution_mode,
+        "benchmark_eligible": benchmark_eligible,
         "strategy": strategy,
         "scenario": case.scenario,
         "ground_truth_category": case.category,
         "invalid_setup": False,
         "passed": False,
     }
+    if case_id is not None:
+        record["case_id"] = case_id
     try:
         initial = lab.run("reset")
         if not initial.get("passed"):
             raise RuntimeError("Baseline reset did not pass request checks")
-        injected = lab.inject(case.scenario)
+        injected = lab.inject(case.scenario, fault=fault, api_replicas=api_replicas)
         if case.scenario == "healthy":
             manifested = injected.get("passed") is True and injected.get("mutation_count") == 0
         else:

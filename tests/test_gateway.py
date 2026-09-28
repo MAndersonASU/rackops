@@ -135,6 +135,7 @@ def test_rejected_agent_inputs_never_reach_backend():
             gateway.propose(kind, name, field, value, ids, "Simple reason")
     assert backend.state.value == "redis"
     assert gateway.actions == {}
+    assert gateway.policy_denials == len(cases)
 
 
 def test_context_and_stale_preconditions_block_mutation():

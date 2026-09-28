@@ -34,9 +34,20 @@ Target holdout: 12 repairable configurations (4 per family), 4 healthy, and
 4 unsupported. Three serial repetitions per strategy would be 180 attempts.
 If API budget or time is lower, the declared fallback is 10 configurations,
 2 repetitions, 3 strategies, and 60 attempts. Repetitions are not independent
-new incidents. Invalid setups are counted separately, never as agent successes.
+new incidents. That fallback is now frozen as `rackops-reduced-holdout-v1` in
+`evaluation/reduced-holdout-v1.json` (SHA-256
+`6f422fae0d64a894a2b6ed78da5af8368991675888ad57be875993ad8d537793`). It has
+six repairable configurations, two healthy configurations, and two unsupported
+configurations. Two repetitions and randomized strategy order produce 60
+attempts. Bounded fault values and API replica counts vary; the agent receives
+only operational evidence. Invalid setups are counted separately, never as
+agent successes.
 
 No holdout, model call, or paid experiment has happened yet. No model or
 budget has been selected. Hosted runs require an explicit key, model, current
 input/output prices, and command-wide cap; an unknown-usage failure stops later
 calls. All published fixture output is marked ineligible for benchmark claims.
+The holdout runner records manifest, runtime implementation, and non-secret
+provider-configuration hashes, refuses an incompatible resume, and summarizes root-cause accuracy, verified
+repairs, healthy and unsupported behavior, regressions, policy denials,
+forbidden actions, rollback outcomes, tool calls, tokens, and measured cost.

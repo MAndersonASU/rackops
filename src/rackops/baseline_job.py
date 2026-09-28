@@ -50,6 +50,18 @@ def main():
             "decision": asdict(decision),
             "tool_calls": gateway.calls,
             "repair_attempts": gateway.repairs,
+            "attempted_policy_violations": gateway.policy_denials,
+            "actions": [
+                {
+                    "id": action.id,
+                    "kind": action.kind,
+                    "name": action.name,
+                    "field": action.field,
+                    "status": action.status,
+                    "rollback_status": action.rollback_status,
+                }
+                for action in gateway.actions.values()
+            ],
             "elapsed_seconds": round(time.monotonic() - started, 3),
         }
         records = Path("/tmp/rackops-run.jsonl")
