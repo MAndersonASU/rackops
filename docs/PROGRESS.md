@@ -18,9 +18,10 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
   installation, outside PATH. Execution and directory reads return access denied,
   even after a folder-read permission grant. Linux container support is unverified.
 - `kind` and `kubectl` not on PATH. WSL status/list return access denied.
-- GitHub CLI authenticated as `MAndersonASU` through a device flow. Its token
-  is in the ignored local `work/gh-config` folder because this sandbox could
-  not write normal CLI settings. No token is in tracked files.
+- GitHub CLI authenticated as `MAndersonASU` through a device flow. The login
+  is now in the standard GitHub CLI settings directory. A temporary duplicate
+  project-local login was cleared with `gh auth logout`; its remaining file
+  contains no token. No token is in tracked files.
 
 ## Decisions
 
@@ -96,7 +97,8 @@ tracking verified. The first Git transport attempt failed under Windows
 Schannel; a CA bundle exported from the local Windows trust store allowed a
 verified TLS Git push using the existing GitHub CLI login. TLS verification
 stayed enabled. GitHub Actions `deterministic checks` completed successfully
-for `cbc07ef` (run 36368068846). The manually gated kind smoke job has not run.
+for `cbc07ef` (run 36368068846) and `9070064` (run 36368188411). The manually
+gated kind smoke job has not run.
 No cloud infrastructure provisioned. Source code is under MIT; no framework
 code was copied.
 
