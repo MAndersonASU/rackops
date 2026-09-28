@@ -28,4 +28,5 @@ the faulty incident state. The trusted runner's final reset is a separate step.
 Three fault fields are planned for runtime repair: the API Deployment's Redis
 host, that Deployment's image, and the API Service's target port. The test
 runner can also scale Redis to zero; the runtime Role cannot patch Redis.
-The real cluster, runtime Pod, and end-to-end action loop remain unverified.
+The runbook Job is now defined with the restricted service account, but the
+real cluster, RBAC enforcement, and end-to-end action loop remain unverified.

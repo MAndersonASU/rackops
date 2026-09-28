@@ -41,7 +41,7 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
   request counters/histograms, sanitized dependency-error logs.
 - Independent response checker rejects corrupted responses and superficial health.
 - Explicit fixture fault/recovery demo.
-- Named-cluster startup/reset/injection/recovery/cleanup CLI; first incident only.
+- Named-cluster startup/reset/injection/recovery/cleanup CLI.
   Selected-field snapshot and UID/resource-version preconditions; snapshot retained
   on failed recovery. This is scripted fault reversal, not harness rollback.
 - Kubernetes manifests for API, Redis, Prometheus, and labeled request generator.
@@ -52,6 +52,12 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
 - In-cluster HTTP adapter and namespaced `rackops-agent` Role/RoleBinding;
   mock-transport tests pass, but real RBAC has not been exercised. Agent Pod,
   LLM strategies, and full experiment runner are still absent.
+- A restricted runbook Job is wired to the operator CLI. After a proposed
+  repair, its trusted checker waits for rollout readiness and probes real
+  writes/reads for 60 seconds; this path is not yet run in a cluster.
+- Basic and structured strategy loops have scripted fake-provider tests. The
+  fake is labeled ineligible for benchmark claims and makes zero paid calls.
+  Hosted-model transport and live comparison have not been implemented.
 - Fast CI and manually gated kind smoke workflow (not run on GitHub).
 
 ## Checks and failures
@@ -59,7 +65,8 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
 - First fast test run: 31 passed; lint passed after formatting.
 - Fixture demo: healthy 2/2, injected failure 0/2, recovery 2/2; live during
   fault, unready during fault, metrics present. Not a benchmark.
-- Dependency consistency check passed. Nine Kubernetes YAML objects parsed.
+- Initial dependency consistency check passed. The first nine Kubernetes YAML
+  objects parsed; later RBAC additions are covered by YAML/Role tests.
 - Starlette emits a deprecation warning for its current httpx TestClient adapter;
   compatibility passes, migration to its recommended adapter remains maintenance.
 - Docker/WSL access failures prevent the live-cluster acceptance checks.
@@ -71,7 +78,7 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
   deprecation warning remains as described above.
 - Selected fixture JSON saved under `results/fixture-demo.json`; no private
   paths or credential patterns found in the project file scan.
-- Continuation checks: **56 tests passed**, Ruff lint/format and `pip check`
+- Continuation checks: **62 tests passed**, Ruff lint/format and `pip check`
   passed. Tests cover three proposed repairs, healthy no-op, unsupported
   escalation, denied fields, stale state, failed repair/rollback, and mocked
   Kubernetes REST operations. All are offline; only the transport fixture uses
@@ -84,7 +91,9 @@ The owner authorized automatic GitHub publication on 2026-09-27. A public
 portfolio repository named `rackops` under the authenticated GitHub account is
 the selected default. GitHub login was initially invalid; the first device
 authorization could not be saved to the normal CLI configuration path. A second
-device login is pending in an ignored project-local `work/gh-config` directory.
+device login in an ignored project-local `work/gh-config` directory timed out
+before approval. GitHub authentication remains pending; generate a fresh device
+code after the next concrete local checkpoint.
 No GitHub repository or Git remote exists yet; do not claim publication until verified.
 No cloud infrastructure provisioned. Source code is under MIT; no framework
 code was copied.
@@ -101,7 +110,7 @@ code was copied.
 
 ## Remaining project scope
 
-The structured LLM harness, basic LLM agent, full live runbook, runtime RBAC
+Hosted LLM transport for the structured/basic loops, full live runbook, runtime RBAC
 integration, healthy/unsupported live scoring, experiment runner, heldout
 evaluation, dashboard, final portfolio demo, GitHub publication, and CI
 execution are not complete. The evidence ledger and rollback core have offline

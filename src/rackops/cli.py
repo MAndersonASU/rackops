@@ -71,12 +71,17 @@ def main() -> None:
         child = sub.add_parser(command)
         child.add_argument("--url", type=local_url, default="http://127.0.0.1:8000")
     lab = sub.add_parser("lab", help="Trusted operator/test-runner commands only")
-    lab.add_argument("action", choices=["up", "reset", "inject", "recover", "down"])
+    lab.add_argument("action", choices=["up", "reset", "inject", "recover", "baseline", "down"])
     lab.add_argument(
         "--scenario",
         choices=["bad_redis_host", "bad_service_port", "bad_image", "redis_outage", "healthy"],
         default="bad_redis_host",
         help="Scenario for lab inject; ignored by other lab actions",
+    )
+    lab.add_argument(
+        "--expect",
+        choices=["verified_repair", "healthy_no_action", "escalated"],
+        help="Expected decision status for lab baseline (trusted runner check)",
     )
     args = parser.parse_args()
     try:
@@ -89,7 +94,7 @@ def main() -> None:
         elif args.command == "lab":
             from rackops.lab import run
 
-            result = run(args.action, scenario=args.scenario)
+            result = run(args.action, scenario=args.scenario, expected=args.expect)
         else:
             with httpx.Client(
                 base_url=args.url, timeout=2, follow_redirects=False, trust_env=False

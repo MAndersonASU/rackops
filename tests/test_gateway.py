@@ -100,6 +100,25 @@ def test_concurrent_change_blocks_rollback_without_overwrite():
     assert action.rollback_status == "conflict"
 
 
+def test_status_only_version_advance_allows_field_scoped_rollback():
+    backend = MemoryBackend()
+    gateway = Gateway(backend, lambda: {"passed": False})
+    evidence = gateway.add_evidence("events", "Rollout not ready")
+    action = gateway.propose(
+        "deployment",
+        "rackops-api",
+        "redis_host",
+        "other-host",
+        [evidence.id],
+        "Try historical host",
+    )
+    gateway.apply(action.id)
+    gateway.verify(action.id)
+    backend.state = replace(backend.state, resource_version="3")
+    assert gateway.rollback(action.id).rollback_status == "verified"
+    assert backend.state.value == "redis"
+
+
 def test_rejected_agent_inputs_never_reach_backend():
     backend = MemoryBackend()
     gateway = Gateway(backend, lambda: {"passed": True})

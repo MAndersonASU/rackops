@@ -254,7 +254,23 @@ class Gateway:
         if action is None or action_id != self.pending or action.status != "verification_failed":
             raise PolicyDenied("Only a failed pending repair may be rolled back")
         current = self.backend.read_field(action.kind, action.name, action.field)
-        if current != action.after:
+        if action.after is None or (
+            current.kind,
+            current.name,
+            current.field,
+            current.uid,
+            current.context,
+            current.namespace,
+            current.value,
+        ) != (
+            action.after.kind,
+            action.after.name,
+            action.after.field,
+            action.after.uid,
+            action.after.context,
+            action.after.namespace,
+            action.after.value,
+        ):
             action.rollback_status = "conflict"
             self.record("rollback_conflict", {"action_id": action_id})
             raise PolicyDenied("Concurrent change prevents safe rollback")

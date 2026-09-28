@@ -197,6 +197,68 @@ def request_check() -> dict:
         kube("delete", "job", name, "--ignore-not-found", "--wait=false", check=False)
 
 
+def run_baseline_job() -> dict:
+    """Trusted runner creates a restricted Pod; its code gets no runner credentials."""
+    guard()
+    name = "rackops-baseline-" + uuid.uuid4().hex[:8]
+    job = {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {"name": name, "namespace": NAMESPACE, "labels": LABEL},
+        "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 260,
+            "ttlSecondsAfterFinished": 120,
+            "template": {
+                "metadata": {"labels": LABEL},
+                "spec": {
+                    "restartPolicy": "Never",
+                    "serviceAccountName": "rackops-agent",
+                    "automountServiceAccountToken": True,
+                    "securityContext": {"runAsNonRoot": True, "runAsUser": 10001},
+                    "containers": [
+                        {
+                            "name": "baseline",
+                            "image": "rackops-api:dev",
+                            "imagePullPolicy": "Never",
+                            "command": ["python", "-m", "rackops.baseline_job"],
+                            "resources": {
+                                "requests": {"cpu": "50m", "memory": "96Mi"},
+                                "limits": {"cpu": "500m", "memory": "192Mi"},
+                            },
+                        }
+                    ],
+                },
+            },
+        },
+    }
+    kube("create", "-f", "-", input_data=json.dumps(job))
+    try:
+        deadline = time.monotonic() + 270
+        while time.monotonic() < deadline:
+            obj = json.loads(kube("get", "job", name, "-o", "json").stdout)
+            status = obj.get("status", {})
+            if status.get("succeeded") or status.get("failed"):
+                logs = kube("logs", f"job/{name}").stdout
+                raw = ROOT / "results" / "raw"
+                raw.mkdir(parents=True, exist_ok=True)
+                (raw / f"{name}.log").write_text(logs, encoding="utf-8")
+                try:
+                    result = json.loads(logs.splitlines()[-1])
+                except (ValueError, IndexError) as exc:
+                    raise RuntimeError("Baseline Job did not return a valid result") from exc
+                if (
+                    result.get("execution_mode") != "kubernetes"
+                    or result.get("strategy") != "runbook"
+                ):
+                    raise RuntimeError("Baseline Job returned an unexpected result")
+                return result
+            time.sleep(2)
+        raise RuntimeError("Baseline Job exceeded its 270-second runner limit")
+    finally:
+        kube("delete", "job", name, "--ignore-not-found", "--wait=false", check=False)
+
+
 def scenario_resource(scenario):
     if scenario in {"bad_redis_host", "bad_image"}:
         obj = deployment()
@@ -328,7 +390,7 @@ def recover():
     }
 
 
-def run(action, scenario="bad_redis_host"):
+def run(action, scenario="bad_redis_host", expected=None):
     if action == "up":
         if (
             command(["docker", "info", "--format", "{{.OSType}}"], timeout=20).stdout.strip()
@@ -375,6 +437,11 @@ def run(action, scenario="bad_redis_host"):
         return inject(scenario)
     if action == "recover":
         return recover()
+    if action == "baseline":
+        result = run_baseline_job()
+        if expected is not None:
+            result["passed"] = result.get("decision", {}).get("status") == expected
+        return result
     guard()
     if action == "reset":
         # Reset is a trusted runner operation, not an agent rollback.

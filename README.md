@@ -20,8 +20,9 @@ flowchart LR
 ```
 
 The coding assistant building this repository is different from the runtime
-agent planned for the experiment. No runtime agent exists yet. The operator
-CLI invokes Docker/kubectl and must never become an LLM tool.
+agent being evaluated. The basic and structured loops currently use a scripted
+fake provider for offline tests; no hosted model has run. The operator CLI
+invokes Docker/kubectl and must never become an LLM tool.
 
 ## Run the tested fixture demo
 
@@ -76,6 +77,7 @@ After installing this package, use `rackops` with `.venv/Scripts` (Windows) or
 rackops doctor
 rackops lab up
 rackops lab inject
+rackops lab baseline --expect verified_repair
 rackops lab recover
 rackops lab reset
 rackops lab down
@@ -88,8 +90,11 @@ real cluster test. It requires a healthy baseline and checks that the injected
 fault manifests before returning. The image case records rollout failure and
 whether client requests also failed; these are separate outcomes.
 `recover` restores the recorded host with concurrent-change checks and validates
-requests. `reset` restores the checked-in baseline; `down` removes the disposable
-cluster. Recovery is not the planned agent's rollback mechanism.
+requests. `baseline` creates a Job using the restricted `rackops-agent` service
+account; it uses operational clues and verifies any repair with a 60-second
+request window. The Job and its Role still need a live cluster test. `reset`
+restores the checked-in baseline; `down` removes the disposable cluster.
+Trusted runner recovery is separate from the gateway's field rollback.
 
 For local access, in a separate terminal:
 
@@ -123,7 +128,8 @@ python -m pytest -q
 ```
 
 Tests cover exact response checking, wrong repairs, dependency failures,
-malformed input, metrics cardinality, and operator recovery guards. A transport
+malformed input, metrics cardinality, operator recovery guards, and fake-provider
+strategy decisions. A transport
 test exercises real HTTP and redis-py sockets against **simulated Redis**; it is
 not a real Redis integration test. [Results](docs/results.md) report actual checks.
 

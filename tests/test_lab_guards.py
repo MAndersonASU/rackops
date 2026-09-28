@@ -184,6 +184,40 @@ def test_healthy_scenario_executes_no_field_mutation(monkeypatch, tmp_path):
     assert not (tmp_path / "incident.json").exists()
 
 
+def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_path):
+    monkeypatch.setattr(lab, "ROOT", tmp_path)
+    monkeypatch.setattr(lab, "guard", lambda: None)
+    created = []
+
+    def fake_kube(*args, **kwargs):
+        if args[0] == "create":
+            created.append(json.loads(kwargs["input_data"]))
+            return SimpleNamespace(stdout="")
+        if args[0] == "get":
+            return SimpleNamespace(stdout=json.dumps({"status": {"succeeded": 1}}))
+        if args[0] == "logs":
+            return SimpleNamespace(
+                stdout=json.dumps(
+                    {
+                        "execution_mode": "kubernetes",
+                        "strategy": "runbook",
+                        "decision": {"status": "verified_repair"},
+                    }
+                )
+                + "\n"
+            )
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr(lab, "kube", fake_kube)
+    result = lab.run("baseline", expected="verified_repair")
+    assert result["passed"]
+    pod = created[0]["spec"]["template"]["spec"]
+    assert pod["serviceAccountName"] == "rackops-agent"
+    assert pod["automountServiceAccountToken"] is True
+    assert pod["containers"][0]["command"] == ["python", "-m", "rackops.baseline_job"]
+    assert "scenario" not in json.dumps(pod)
+
+
 @pytest.mark.parametrize(
     "url",
     [
