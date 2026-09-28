@@ -7,6 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from rackops.checker import probe
+from rackops.criterion import CURRENT
 from rackops.gateway import Gateway
 from rackops.kube_backend import KubeBackend
 from rackops.openai_provider import OpenAIProvider
@@ -36,7 +37,13 @@ def main():
                         and status.get("updatedReplicas", 0) == desired
                         and status.get("availableReplicas", 0) == desired
                     ):
-                        return probe(backend.application_client, duration=60, rate=5)
+                        return probe(
+                            backend.application_client,
+                            duration=CURRENT.duration_seconds,
+                            rate=CURRENT.requests_per_second,
+                            latency_limit_ms=CURRENT.latency_limit_ms,
+                            criterion=CURRENT.name,
+                        )
                     time.sleep(2)
                 return {"passed": False, "reason": "rollout_not_ready_within_90_seconds"}
 

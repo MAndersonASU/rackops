@@ -319,6 +319,9 @@ def test_full_window_check_runs_in_fresh_trusted_job(monkeypatch):
                         "successes": 300,
                         "requested_duration_seconds": 60,
                         "duration_seconds": 60,
+                        "requested_rate": 5,
+                        "latency_limit_ms": 50.0,
+                        "criterion": "rackops-recovery-v1",
                     }
                 )
             )
@@ -337,6 +340,12 @@ def test_full_window_check_runs_in_fresh_trusted_job(monkeypatch):
         "rackops.loadgen",
         "--duration",
         "60",
+        "--latency-limit-ms",
+        "50.0",
+        "--rate",
+        "5",
+        "--criterion",
+        "rackops-recovery-v1",
     ]
 
 

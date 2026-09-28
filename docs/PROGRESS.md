@@ -11,8 +11,11 @@ serial evaluator run 36371654019 completed three valid setups but passed 2/3;
 its original output omitted the failing case, so per-case diagnostics were
 added. Run 36373009068 reproduced the 2/3 result and showed stale image history
 caused the Redis-host misclassification. Diagnosis now uses current-Pod image
-status and current dependency logs, pending a live rerun. Prometheus query
-contents, laptop setup, and hosted execution still need checks.
+status and current dependency logs. Run 36374074466 passed all 3/3 diagnostic
+cases and a live Prometheus rate query. Run 36374095023 completed five healthy
+calibration windows; their 3.502 ms worst p95 selected the declared 50 ms floor,
+which is frozen as `rackops-recovery-v1`. Laptop setup and hosted execution still
+need checks.
 
 ## Environment facts
 
@@ -42,9 +45,9 @@ contents, laptop setup, and hosted execution still need checks.
   replicas serving and must be scored separately.
 - Lab CLI is a trusted operator tool, not the restricted runtime gateway.
   It must never be given to the runtime LLM.
-- Pilot checker: 5 HTTP requests/second, alternating PUT/GET, for 60 seconds;
-  >=99% correct responses and p95 <=500 ms. Threshold is provisional and
-  must be calibrated/frozen before any benchmark. Smoke checks use 2 seconds.
+- Frozen checker `rackops-recovery-v1`: 5 HTTP requests/second, alternating
+  PUT/GET, for 60 seconds; >=99% correct responses and p95 <=50 ms. It was
+  frozen from run 36374095023 before holdout. Smoke checks use 2 seconds.
 
 ## Implemented
 
@@ -84,9 +87,9 @@ contents, laptop setup, and hosted execution still need checks.
   offline boundary tests. Run 36371654019 executed three valid cases and passed
   2/3; case-level diagnostics were added for the rerun.
 - `calibrate-dev` validates repeated complete healthy windows and writes an
-  ignored raw record plus an explicitly unfrozen threshold candidate. The fixed
-  formula is twice the worst healthy p95 with a 50 ms floor; no live calibration
-  has run and no final criterion is frozen.
+  ignored raw record plus an explicitly unfrozen threshold candidate. Run
+  36374095023 completed five windows; the fixed formula selected 50 ms and the
+  reviewed result is now frozen separately as `rackops-recovery-v1`.
 
 ## Checks and failures
 
@@ -151,8 +154,11 @@ contents, laptop setup, and hosted execution still need checks.
   then reproduced 2/3 in the serial evaluator. The bad Redis-host case was
   misclassified from stale image history; its wrong repair failed independent
   verification and rolled back. Healthy and unsupported cases passed. A
-  current-Pod/current-log regression fix now passes locally. Current local
-  suite: **93 tests passed**; live rerun pending.
+  current-Pod/current-log regression fix now passes locally.
+- Run 36374074466 on `c9c9a51` passed the five standalone scenarios, explicit
+  RBAC checks, live Prometheus rate query, and all 3/3 diagnostic evaluator
+  cases. Run 36374095023 completed five healthy calibration windows at 300/300
+  correct requests. Current local suite: **94 tests passed**.
 
 ## Budget and delivery
 
@@ -170,16 +176,15 @@ code was copied.
 
 ## Next three actions
 
-1. Rerun `evaluate-dev` in CI with its new case diagnostics and correct the
-   single failed development attempt without weakening the checker.
-2. From a normal user terminal, confirm Docker Linux mode and WSL version;
+1. Revalidate all live scenarios against frozen `rackops-recovery-v1`.
+2. Define and freeze the reduced holdout configuration set without examining
+   strategy results.
+3. From a normal user terminal, confirm Docker Linux mode and WSL version;
    make Docker, kind, and kubectl available, then run `rackops doctor` locally.
-3. After selecting a model and agreed API cap, live-check both hosted strategies;
-   calibrate and freeze the recovery threshold before planning the holdout.
 
 ## Remaining project scope
 
-Live hosted execution, evaluator diagnosis, threshold calibration, held-out
+Live hosted execution, held-out
 evaluation, dashboard refinement, and local laptop reproduction are incomplete.
 Rollback failure paths still need live checks. The evidence ledger and rollback
 core have offline tests. Do not infer benchmark or LLM success from smoke checks.

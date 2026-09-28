@@ -1,0 +1,28 @@
+{
+  "benchmark_eligible": false,
+  "candidate": {
+    "criterion_version": "rackops-recovery-v1",
+    "duration_seconds": 60,
+    "headroom_multiplier": 2.0,
+    "healthy_p95_latency_ms": [
+      3.181,
+      3.502,
+      3.254,
+      3.354,
+      3.387
+    ],
+    "healthy_runs": 5,
+    "latency_floor_ms": 50.0,
+    "latency_limit_ms": 50.0,
+    "latency_statistic": "p95",
+    "maximum_healthy_p95_latency_ms": 3.502,
+    "minimum_success_rate": 0.99,
+    "requests_per_second": 5,
+    "status": "frozen"
+  },
+  "commit": "c9c9a5174317a26353f2b7d39508e7ccd0d28c20",
+  "execution_mode": "github_actions_kind_calibration",
+  "recorded_at": "2026-09-28T03:39:04.262252+00:00",
+  "source_run": "https://github.com/MAndersonASU/rackops/actions/runs/36374095023",
+  "use": "development calibration used to freeze the criterion before holdout"
+}

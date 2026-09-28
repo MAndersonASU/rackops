@@ -14,12 +14,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--duration", type=int, choices=range(1, 121))
+    parser.add_argument("--rate", type=int, choices=range(1, 21), default=5)
+    parser.add_argument("--latency-limit-ms", type=float, default=500.0)
+    parser.add_argument("--criterion", default="pilot_unfrozen")
     args = parser.parse_args()
     if args.once and args.duration is not None:
         parser.error("Choose either --once or --duration")
     with httpx.Client(base_url="http://rackops-api:8000", timeout=2, trust_env=False) as client:
         if args.duration is not None:
-            result = probe(client, duration=args.duration, rate=5)
+            result = probe(
+                client,
+                duration=args.duration,
+                rate=args.rate,
+                latency_limit_ms=args.latency_limit_ms,
+                criterion=args.criterion,
+            )
             print(json.dumps(result), flush=True)
             raise SystemExit(0 if result["passed"] else 1)
         while True:

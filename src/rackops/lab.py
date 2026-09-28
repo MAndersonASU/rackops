@@ -4,11 +4,15 @@ Scenario truth and injection are confined to this trusted test-runner module.
 """
 
 import json
+import math
 import os
+import re
 import subprocess
 import time
 import uuid
 from pathlib import Path
+
+from rackops.criterion import CURRENT
 
 ROOT = Path(__file__).resolve().parents[2]
 CONTEXT = "kind-rackops"
@@ -151,10 +155,32 @@ def readiness():
         kube("rollout", "status", f"deployment/{name}", "--timeout=120s", timeout=140)
 
 
-def request_check(duration_seconds: int | None = None) -> dict:
+def request_check(
+    duration_seconds: int | None = None,
+    *,
+    rate: int | None = None,
+    latency_limit_ms: float | None = None,
+    criterion: str | None = None,
+) -> dict:
     """Run a fresh job against the Service, not a port-forward bound to an old Pod."""
     if duration_seconds is not None and duration_seconds not in range(1, 121):
         raise ValueError("Request check duration must be 1..120 seconds")
+    if duration_seconds is not None:
+        rate = CURRENT.requests_per_second if rate is None else rate
+        latency_limit_ms = (
+            CURRENT.latency_limit_ms if latency_limit_ms is None else latency_limit_ms
+        )
+        criterion = CURRENT.name if criterion is None else criterion
+        if (
+            type(latency_limit_ms) not in {int, float}
+            or not math.isfinite(latency_limit_ms)
+            or latency_limit_ms <= 0
+            or type(rate) is not int
+            or rate not in range(1, 21)
+            or type(criterion) is not str
+            or not re.fullmatch(r"[a-z0-9_.-]{1,64}", criterion)
+        ):
+            raise ValueError("Request check criterion is invalid")
     name = "rackops-check-" + uuid.uuid4().hex[:8]
     job = {
         "apiVersion": "batch/v1",
@@ -180,6 +206,18 @@ def request_check(duration_seconds: int | None = None) -> dict:
                                 "rackops.loadgen",
                                 "--once" if duration_seconds is None else "--duration",
                                 *([] if duration_seconds is None else [str(duration_seconds)]),
+                                *(
+                                    []
+                                    if duration_seconds is None
+                                    else [
+                                        "--latency-limit-ms",
+                                        str(latency_limit_ms),
+                                        "--rate",
+                                        str(rate),
+                                        "--criterion",
+                                        criterion,
+                                    ]
+                                ),
                             ],
                             "resources": {
                                 "requests": {"cpu": "25m", "memory": "64Mi"},
@@ -208,9 +246,12 @@ def request_check(duration_seconds: int | None = None) -> dict:
                             raise ValueError("Invalid smoke request count")
                     elif (
                         result.get("requested_duration_seconds") != duration_seconds
+                        or result.get("requested_rate") != rate
+                        or result.get("latency_limit_ms") != latency_limit_ms
+                        or result.get("criterion") != criterion
                         or result.get("duration_seconds", 0) < duration_seconds
                         or type(result.get("requests")) is not int
-                        or not 0 <= result["requests"] <= duration_seconds * 5
+                        or not 0 <= result["requests"] <= duration_seconds * rate
                         or type(result.get("successes")) is not int
                         or not 0 <= result["successes"] <= result["requests"]
                     ):

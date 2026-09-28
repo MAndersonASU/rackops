@@ -62,9 +62,19 @@ def summarize(samples: list[Sample], latency_limit_ms: float = 500) -> dict:
 
 
 def probe(
-    client: Client, duration: float = 60, rate: int = 5, latency_limit_ms: float = 500
+    client: Client,
+    duration: float = 60,
+    rate: int = 5,
+    latency_limit_ms: float = 500,
+    criterion: str = "pilot_unfrozen",
 ) -> dict:
-    if not math.isfinite(duration) or not 1 <= duration <= 120 or not 1 <= rate <= 20:
+    if (
+        not math.isfinite(duration)
+        or not 1 <= duration <= 120
+        or not 1 <= rate <= 20
+        or type(criterion) is not str
+        or not 1 <= len(criterion) <= 64
+    ):
         raise ValueError("Probe duration must be 1..120 seconds and rate 1..20 requests/second")
     total = int(duration * rate)
     if total % 2:
@@ -91,7 +101,7 @@ def probe(
             "requested_duration_seconds": duration,
             "requested_rate": rate,
             "complete_window": len(samples) == total,
-            "criterion": "pilot_unfrozen",
+            "criterion": criterion,
         }
     )
     result["passed"] = result["passed"] and result["complete_window"]

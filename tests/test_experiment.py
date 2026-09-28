@@ -5,6 +5,20 @@ import pytest
 from rackops import experiment
 
 
+def complete_check(*, passed=True, successes=300):
+    criterion = experiment.CURRENT
+    return {
+        "passed": passed,
+        "requests": 300,
+        "successes": successes,
+        "requested_duration_seconds": criterion.duration_seconds,
+        "duration_seconds": float(criterion.duration_seconds),
+        "requested_rate": criterion.requests_per_second,
+        "latency_limit_ms": criterion.latency_limit_ms,
+        "criterion": criterion.name,
+    }
+
+
 def test_claimed_repair_fails_when_trusted_check_fails(monkeypatch, tmp_path):
     def fake_run(action):
         assert action == "reset"
@@ -30,13 +44,7 @@ def test_claimed_repair_fails_when_trusted_check_fails(monkeypatch, tmp_path):
     monkeypatch.setattr(
         experiment.lab,
         "request_check",
-        lambda **kwargs: {
-            "passed": False,
-            "requests": 300,
-            "successes": 0,
-            "requested_duration_seconds": kwargs["duration_seconds"],
-            "duration_seconds": 60,
-        },
+        lambda **kwargs: complete_check(passed=False, successes=0),
     )
     path = tmp_path / "raw" / "attempts.jsonl"
     summary = experiment.run_development(path, ["bad_redis_host"])
@@ -78,13 +86,7 @@ def test_unsupported_requires_escalation_and_continued_outage():
         "decision": {"status": "escalated", "root_cause": case.category},
         "repair_attempts": 0,
     }
-    outage = {
-        "passed": False,
-        "requests": 300,
-        "successes": 0,
-        "requested_duration_seconds": 60,
-        "duration_seconds": 60,
-    }
+    outage = complete_check(passed=False, successes=0)
     assert experiment.score(case, agent, outage)["passed"]
     assert not experiment.score(case, agent, {**outage, "passed": True, "successes": 300})["passed"]
 
@@ -94,13 +96,7 @@ def test_malformed_agent_decision_never_scores_as_success():
     assert not experiment.score(
         case,
         {"decision": "healthy_no_action", "repair_attempts": 0},
-        {
-            "passed": True,
-            "requests": 300,
-            "successes": 300,
-            "requested_duration_seconds": 60,
-            "duration_seconds": 60,
-        },
+        complete_check(),
     )["passed"]
 
 
@@ -111,14 +107,17 @@ def test_basic_healthy_uses_strategy_specific_nonmutating_decision():
         "decision": {"status": "claimed_healthy", "root_cause": "healthy"},
         "repair_attempts": 0,
     }
-    check = {
-        "passed": True,
-        "requests": 300,
-        "successes": 300,
-        "requested_duration_seconds": 60,
-        "duration_seconds": 60,
-    }
+    check = complete_check()
     assert experiment.score(case, agent, check)["passed"]
+
+
+def test_score_rejects_a_check_with_the_wrong_criterion():
+    case = experiment.CASES["healthy"]
+    agent = {
+        "decision": {"status": "healthy_no_action", "root_cause": "healthy"},
+        "repair_attempts": 0,
+    }
+    assert not experiment.score(case, agent, {**complete_check(), "criterion": "other"})["passed"]
 
 
 def test_hosted_command_stops_when_conservative_budget_is_exhausted(monkeypatch, tmp_path):

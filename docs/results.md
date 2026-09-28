@@ -56,8 +56,20 @@ misclassified as a broken image because old image revision history remained
 after earlier scenarios. The wrong repair failed independent verification,
 rollback was verified, and the outer checker observed 0/66 successes. The
 selected failure record is `results/evaluator-diagnostic-2026-09-28.json`.
-Current diagnosis uses current-Pod image state and current dependency logs;
-that fix still needs a live rerun.
+Current diagnosis uses current-Pod image state and current dependency logs.
+Follow-up [run 36374074466](https://github.com/MAndersonASU/rackops/actions/runs/36374074466)
+passed the five standalone scenarios, explicit RBAC checks, a positive live
+Prometheus query (0.37504 requests/second), and all 3/3 serial evaluator cases.
+The healthy evaluator case completed 300/300 requests; the unsupported outage
+correctly escalated and remained failed under the independent check.
+
+Healthy calibration
+[run 36374095023](https://github.com/MAndersonASU/rackops/actions/runs/36374095023)
+completed five 60-second windows at 5 requests/second, each 300/300 correct.
+Their p95 values were 3.181, 3.502, 3.254, 3.354, and 3.387 ms. The declared
+max(50 ms, twice worst healthy p95) formula produced 50 ms. That threshold is
+frozen as `rackops-recovery-v1`; selected evidence is in
+`results/healthy-calibration-2026-09-28.json`.
 
 These are development runs, not a recovery-rate estimate. A prior run
 escalated incorrectly due a runbook rule that has since been fixed. Another

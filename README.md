@@ -92,16 +92,19 @@ development scenarios serially using the runbook. Repeat `--scenario NAME` to
 select cases. It resets between attempts, performs a fresh 60-second trusted
 request check after the Job, and writes JSONL to ignored
 `results/raw/development.jsonl`.
-This command is not a held-out benchmark. Two three-case CI executions completed
-with 2/3 passing. The second identified stale image revision history causing a
-Redis-host fault misclassification; current-Pod status and dependency-log
-signals now replace that stale-history shortcut, pending a live rerun.
+This command is not a held-out benchmark. The diagnostic run that exposed a
+stale image-history misclassification passed 2/3. After diagnosis was limited
+to current-Pod status and current dependency logs, GitHub Actions run
+[36374074466](https://github.com/MAndersonASU/rackops/actions/runs/36374074466)
+passed all 3/3 diagnostic cases.
 
 Before any holdout, `rackops calibrate-dev --runs 5` records five complete
 healthy 60-second windows under ignored `results/raw/`. It recommends twice the
 worst healthy p95 latency with a 50 ms floor and labels the result
-`candidate_unfrozen`. Review and version that candidate separately; running the
-command alone does not freeze or authorize a benchmark criterion.
+`candidate_unfrozen`. Five complete 300-request windows in run
+[36374095023](https://github.com/MAndersonASU/rackops/actions/runs/36374095023)
+had p95 latency from 3.181 to 3.502 ms. The predeclared rule selected its 50 ms
+floor, now frozen as `rackops-recovery-v1` before holdout.
 
 `up` creates only the `rackops` cluster and refuses to adopt an existing one.
 `inject` accepts `--scenario bad_redis_host`, `bad_service_port`, `bad_image`,
@@ -183,11 +186,11 @@ strategy decisions, hosted schema validation, and pre-request cost limits. A tra
 test exercises real HTTP and redis-py sockets against **simulated Redis**; it is
 not a real Redis integration test. [Results](docs/results.md) report actual checks.
 
-The 60-second checker uses a provisional 500 ms p95 limit. It is not calibrated
-or frozen. `lab recover` uses a short smoke check, not that full window. No
-repair-success percentage, cost comparison, or production reliability claim is
-currently justified. Full independent scenario scoring remains a later
-milestone. Fast CI and one manual kind smoke passed on GitHub.
+The independent checker uses frozen criterion `rackops-recovery-v1`: 5 requests
+per second for 60 seconds, at least 99% correct responses, and p95 latency at
+most 50 ms. `lab recover` uses a short smoke check, not that full window. No
+held-out repair-success percentage, cost comparison, or production reliability
+claim is currently justified. Full held-out scoring remains a later milestone.
 
 Build the local selected-results dashboard from the checked-in JSON summaries:
 

@@ -57,7 +57,13 @@ def run(record_path: Path, runs: int = MIN_RUNS) -> dict:
         raise RuntimeError("Calibration baseline reset failed")
     try:
         for _ in range(runs):
-            checks.append(lab.request_check(duration_seconds=60))
+            checks.append(
+                lab.request_check(
+                    duration_seconds=60,
+                    latency_limit_ms=500.0,
+                    criterion="calibration_input_v1",
+                )
+            )
         candidate = recommend(checks)
     finally:
         final = lab.run("reset")

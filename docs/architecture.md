@@ -33,7 +33,7 @@ host, that Deployment's image, and the API Service's target port. The test
 runner can also scale Redis to zero; the runtime Role cannot patch Redis.
 The restricted runbook Job repaired all three fault families in the real CI
 kind smoke. The trusted development runner also scores a fresh request check
-after the Job. Its first three-case live execution passed 2/3 and now reports
-case-level diagnostics. Basic and structured Jobs use an ephemeral provider
+after the Job. After correcting stale-history diagnosis, its three-case live
+execution passed 3/3 in run 36374074466. Basic and structured Jobs use an ephemeral provider
 Secret, which the trusted runner deletes, and the same restricted service
 account. Their OpenAI transport is offline-tested; no hosted call has run.

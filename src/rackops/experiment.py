@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from rackops import lab
+from rackops.criterion import CURRENT
 
 
 @dataclass(frozen=True)
@@ -47,8 +48,12 @@ def score(case: Case, agent_result: dict, independent_check: dict) -> dict:
     )
     observed_behavior = (
         independent_check.get("passed") is case.application_should_pass
-        and independent_check.get("requested_duration_seconds") == 60
-        and independent_check.get("duration_seconds", 0) >= 60
+        and CURRENT.frozen
+        and independent_check.get("criterion") == CURRENT.name
+        and independent_check.get("requested_duration_seconds") == CURRENT.duration_seconds
+        and independent_check.get("requested_rate") == CURRENT.requests_per_second
+        and independent_check.get("latency_limit_ms") == CURRENT.latency_limit_ms
+        and independent_check.get("duration_seconds", 0) >= CURRENT.duration_seconds
         and independent_check.get("requests", 0) > 0
         and (
             independent_check.get("successes", 0) >= 297
@@ -100,7 +105,12 @@ def run_case(case: Case, strategy: str = "runbook", *, cap_usd: float | None = N
                 if strategy == "runbook"
                 else lab.run_agent_job(strategy, cap_usd=cap_usd)
             )
-            independent_check = lab.request_check(duration_seconds=60)
+            independent_check = lab.request_check(
+                duration_seconds=CURRENT.duration_seconds,
+                rate=CURRENT.requests_per_second,
+                latency_limit_ms=CURRENT.latency_limit_ms,
+                criterion=CURRENT.name,
+            )
             record["agent"] = agent_result
             record["independent_check"] = independent_check
             record["score"] = score(case, agent_result, independent_check)
