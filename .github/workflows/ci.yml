@@ -54,6 +54,12 @@ jobs:
       - run: rackops lab recover
       - run: rackops lab inject --scenario healthy
       - run: rackops lab baseline --expect healthy_no_action --expect-cause healthy --expect-repairs 0
+      - name: Check a separate two-replica development variation
+        run: |
+          rackops lab reset
+          rackops lab inject --scenario bad_redis_host --fault redis-unreachable-development --api-replicas 2
+          rackops lab baseline --expect verified_repair --expect-cause bad_dependency_configuration --expect-repairs 1
+          rackops lab recover
       - name: Run trusted serial development evaluator
         run: rackops evaluate-dev --scenario bad_redis_host --scenario healthy --scenario redis_outage
       - if: always()

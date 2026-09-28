@@ -696,7 +696,13 @@ def recover():
 
 
 def run(
-    action, scenario="bad_redis_host", expected=None, expected_cause=None, expected_repairs=None
+    action,
+    scenario="bad_redis_host",
+    expected=None,
+    expected_cause=None,
+    expected_repairs=None,
+    fault=None,
+    api_replicas=1,
 ):
     if action == "up":
         if (
@@ -741,7 +747,12 @@ def run(
         readiness()
         return {"execution_mode": "kubernetes", **request_check()}
     if action == "inject":
-        return inject(scenario)
+        if scenario == "bad_service_port" and type(fault) is str and fault.isascii():
+            try:
+                fault = int(fault)
+            except ValueError:
+                pass
+        return inject(scenario, fault=fault, api_replicas=api_replicas)
     if action == "recover":
         return recover()
     if action == "baseline":

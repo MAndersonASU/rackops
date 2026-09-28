@@ -114,6 +114,17 @@ def main() -> None:
         help="Scenario for lab inject; ignored by other lab actions",
     )
     lab.add_argument(
+        "--fault",
+        help="Trusted development fault override for lab inject",
+    )
+    lab.add_argument(
+        "--api-replicas",
+        type=int,
+        choices=[1, 2],
+        default=1,
+        help="Trusted development workload variation for lab inject",
+    )
+    lab.add_argument(
         "--expect",
         choices=["verified_repair", "healthy_no_action", "escalated"],
         help="Expected decision status for lab baseline (trusted runner check)",
@@ -170,6 +181,8 @@ def main() -> None:
                 expected=args.expect,
                 expected_cause=args.expect_cause,
                 expected_repairs=args.expect_repairs,
+                fault=args.fault,
+                api_replicas=args.api_replicas,
             )
         else:
             with httpx.Client(
