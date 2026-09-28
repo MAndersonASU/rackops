@@ -59,12 +59,29 @@ def test_wrong_cluster_denied_before_kubernetes_access(monkeypatch):
 def test_concurrent_host_change_denies_recovery(monkeypatch, tmp_path):
     state = tmp_path / "incident.json"
     state.write_text(
-        json.dumps({"uid": "uid-a", "before_host": "redis", "fault_host": "redis-invalid"})
+        json.dumps(
+            {
+                "scenario": "bad_redis_host",
+                "kind": "deployment",
+                "name": "rackops-api",
+                "uid": "uid-a",
+                "before": "redis",
+                "fault": "redis-invalid",
+            }
+        )
     )
     monkeypatch.setattr(lab, "STATE", state)
     monkeypatch.setattr(lab, "guard", lambda: None)
-    monkeypatch.setattr(lab, "deployment", lambda: {"metadata": {"uid": "uid-a"}})
-    monkeypatch.setattr(lab, "host_location", lambda obj: ("path", "changed-by-someone-else"))
+    monkeypatch.setattr(
+        lab,
+        "scenario_resource",
+        lambda scenario: (
+            "deployment",
+            "rackops-api",
+            {"metadata": {"uid": "uid-a"}},
+            lambda obj: ("path", "changed-by-someone-else"),
+        ),
+    )
     monkeypatch.setattr(
         lab, "patch_host", lambda *a: pytest.fail("Must not overwrite concurrent edit")
     )
@@ -76,17 +93,95 @@ def test_concurrent_host_change_denies_recovery(monkeypatch, tmp_path):
 def test_failed_recovery_keeps_snapshot(monkeypatch, tmp_path):
     state = tmp_path / "incident.json"
     state.write_text(
-        json.dumps({"uid": "uid-a", "before_host": "redis", "fault_host": "redis-invalid"})
+        json.dumps(
+            {
+                "scenario": "bad_redis_host",
+                "kind": "deployment",
+                "name": "rackops-api",
+                "uid": "uid-a",
+                "before": "redis",
+                "fault": "redis-invalid",
+            }
+        )
     )
     monkeypatch.setattr(lab, "STATE", state)
     monkeypatch.setattr(lab, "guard", lambda: None)
-    monkeypatch.setattr(lab, "deployment", lambda: {"metadata": {"uid": "uid-a"}})
-    monkeypatch.setattr(lab, "host_location", lambda obj: ("path", "redis"))
+    monkeypatch.setattr(
+        lab,
+        "scenario_resource",
+        lambda scenario: (
+            "deployment",
+            "rackops-api",
+            {"metadata": {"uid": "uid-a"}},
+            lambda obj: ("path", "redis"),
+        ),
+    )
     monkeypatch.setattr(lab, "readiness", lambda: None)
     monkeypatch.setattr(lab, "request_check", lambda: {"passed": False})
     with pytest.raises(RuntimeError, match="Recovery failed"):
         lab.recover()
     assert state.exists()
+
+
+def test_operator_denies_other_resources_and_fields(monkeypatch):
+    monkeypatch.setattr(
+        lab, "kube", lambda *a, **kw: pytest.fail("Denied action reached Kubernetes")
+    )
+    with pytest.raises(ValueError):
+        lab.named_resource("secret", "credentials")
+    with pytest.raises(ValueError):
+        lab.patch_field(
+            "deployment",
+            "redis",
+            {"spec": {"replicas": 1}},
+            "/spec/template/spec/serviceAccountName",
+            "default",
+            "admin",
+        )
+
+
+def test_service_port_and_image_repair_use_version_preconditions(monkeypatch):
+    calls = []
+    monkeypatch.setattr(lab, "kube", lambda *args: calls.append(args))
+    service = {
+        "metadata": {"uid": "service-a", "resourceVersion": "5"},
+        "spec": {"ports": [{"port": 8000, "targetPort": 6553}]},
+    }
+    path, before = lab.service_port_location(service)
+    lab.patch_field("service", "rackops-api", service, path, before, 8000)
+    patch = json.loads(calls[-1][-1])
+    assert patch[1]["value"] == "5"
+    assert patch[-1] == {"op": "replace", "path": "/spec/ports/0/targetPort", "value": 8000}
+
+    app = {
+        "metadata": {"uid": "api-a", "resourceVersion": "8"},
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "api",
+                            "image": "rackops-api:missing",
+                            "env": [{"name": "RACKOPS_REDIS_HOST", "value": "redis"}],
+                        }
+                    ]
+                }
+            }
+        },
+    }
+    path, before = lab.image_location(app)
+    lab.patch_field("deployment", "rackops-api", app, path, before, "rackops-api:dev")
+    assert json.loads(calls[-1][-1])[-1]["path"] == path
+
+
+def test_healthy_scenario_executes_no_field_mutation(monkeypatch, tmp_path):
+    monkeypatch.setattr(lab, "STATE", tmp_path / "incident.json")
+    monkeypatch.setattr(lab, "guard", lambda: None)
+    monkeypatch.setattr(lab, "request_check", lambda: {"passed": True})
+    monkeypatch.setattr(lab, "patch_field", lambda *a: pytest.fail("Healthy case mutated lab"))
+    result = lab.inject("healthy")
+    assert result["mutation_count"] == 0
+    assert not (tmp_path / "incident.json").exists()
 
 
 @pytest.mark.parametrize(

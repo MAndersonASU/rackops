@@ -82,8 +82,11 @@ rackops lab down
 ```
 
 `up` creates only the `rackops` cluster and refuses to adopt an existing one.
-`inject` currently supports only the bad Redis hostname case. It requires a
-healthy baseline and confirms failed real requests before returning.
+`inject` accepts `--scenario bad_redis_host`, `bad_service_port`, `bad_image`,
+`redis_outage`, or `healthy`. These paths are implemented but have not passed a
+real cluster test. It requires a healthy baseline and checks that the injected
+fault manifests before returning. The image case records rollout failure and
+whether client requests also failed; these are separate outcomes.
 `recover` restores the recorded host with concurrent-change checks and validates
 requests. `reset` restores the checked-in baseline; `down` removes the disposable
 cluster. Recovery is not the planned agent's rollback mechanism.
@@ -130,7 +133,8 @@ repair-success percentage, cost comparison, or production reliability claim is
 currently justified. Runtime policy enforcement and independent scenario
 scoring remain later milestones. CI is configured but has not run on GitHub.
 
-This repository contains original implementation code; no research-framework
-code was copied. Research pointers in the brief are project inspirations, not
-claims of reproduction. A distribution license will be selected with the owner
-before public publication; no third-party license notices have been removed.
+This repository contains original implementation code under the [MIT license](LICENSE);
+no research-framework code was copied. The [research notes](docs/research.md)
+identify project inspirations and limits. The [architecture](docs/architecture.md)
+and [evaluation protocol](docs/evaluation.md) explain the current trust boundaries
+and the planned comparison.

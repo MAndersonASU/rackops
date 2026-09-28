@@ -50,6 +50,6 @@ If startup partially fails, inspect `kind get clusters` and the explicit lab
 namespace before retrying. An incomplete cluster without the lab identity label
 is deliberately not adopted by `reset` or removed by the guarded `down` command.
 
-GitHub is independent of local testing. When publication is due, authenticate with
-`gh auth login -h github.com`, and agree the destination owner and visibility.
-Never paste tokens into chat or checked-in files.
+GitHub is independent of local testing. Publication status and the chosen
+destination are recorded in `PROGRESS.md`. Authenticate through the GitHub CLI
+device flow when necessary. Never paste tokens into chat or checked-in files.

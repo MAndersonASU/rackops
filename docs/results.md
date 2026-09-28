@@ -2,7 +2,7 @@
 
 No real Kubernetes benchmark or LLM evaluation has been run.
 
-Development verification on 2026-09-27: **33 pytest tests passed** in 10.75
+Development verification on 2026-09-27: **56 pytest tests passed** in 10.83
 seconds on Windows/Python 3.12.14. Ruff lint and format checks and `pip check`
 passed. One upstream Starlette TestClient deprecation warning remains.
 The transport test used real HTTP/Redis-protocol sockets with simulated Redis.
