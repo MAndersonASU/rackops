@@ -340,6 +340,35 @@ def test_full_window_check_runs_in_fresh_trusted_job(monkeypatch):
     ]
 
 
+def test_metrics_check_has_no_service_account_token(monkeypatch):
+    created = []
+
+    def fake_kube(*args, **kwargs):
+        if args[0] == "create":
+            created.append(json.loads(kwargs["input_data"]))
+            return SimpleNamespace(stdout="")
+        if args[0] == "get":
+            return SimpleNamespace(stdout=json.dumps({"status": {"succeeded": 1}}))
+        if args[0] == "logs":
+            return SimpleNamespace(
+                stdout=json.dumps(
+                    {
+                        "passed": True,
+                        "metric": "rackops_http_requests_total_rate",
+                        "value_per_second": 4.5,
+                    }
+                )
+            )
+        return SimpleNamespace(stdout="")
+
+    monkeypatch.setattr(lab, "kube", fake_kube)
+    result = lab.metrics_check()
+    assert result["passed"]
+    pod = created[0]["spec"]["template"]["spec"]
+    assert pod["automountServiceAccountToken"] is False
+    assert pod["containers"][0]["command"] == ["python", "-m", "rackops.metrics_check"]
+
+
 @pytest.mark.parametrize(
     "url",
     [

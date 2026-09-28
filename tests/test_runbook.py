@@ -43,6 +43,8 @@ def observed():
         "rackops-api:dev",
         ("rackops-api:dev",),
         ("E0001",),
+        False,
+        True,
     )
 
 
@@ -72,6 +74,23 @@ def test_unready_redis_host_fault_does_not_require_prior_image(observed):
     assert decision.status == "verified_repair"
 
 
+def test_stale_image_history_does_not_override_current_redis_failure(observed):
+    backend = FieldsBackend()
+    gateway = make_gateway(backend)
+    decision = run(
+        gateway,
+        replace(
+            observed,
+            rollout_ready=False,
+            prior_images=("rackops-api:missing",),
+            image_pull_failure=False,
+            redis_failure_observed=True,
+        ),
+    )
+    assert decision.root_cause == "bad_dependency_configuration"
+    assert backend.fields[("deployment", "rackops-api", "redis_host")] == "redis"
+
+
 def test_wrong_service_port_uses_observed_container_port(observed):
     backend = FieldsBackend()
     gateway = make_gateway(backend)
@@ -85,7 +104,14 @@ def test_failed_rollout_repaired_even_if_old_revision_serves(observed):
     gateway = make_gateway(backend)
     decision = run(
         gateway,
-        replace(observed, probe_passed=True, rollout_ready=False, image="rackops-api:missing"),
+        replace(
+            observed,
+            probe_passed=True,
+            rollout_ready=False,
+            image="rackops-api:missing",
+            image_pull_failure=True,
+            redis_failure_observed=False,
+        ),
     )
     assert decision.root_cause == "broken_image"
     assert backend.fields[("deployment", "rackops-api", "image")] == "rackops-api:dev"

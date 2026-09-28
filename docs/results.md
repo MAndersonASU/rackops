@@ -3,7 +3,7 @@
 No Kubernetes benchmark or LLM evaluation has been run. Real kind smokes
 passed on GitHub Actions runners; they are development integration checks.
 
-Development verification on 2026-09-27: **85 pytest tests passed** on
+Development verification on 2026-09-27: **93 pytest tests passed** on
 Windows/Python 3.12.14. Ruff lint and format checks and `pip check`
 passed. One upstream Starlette TestClient deprecation warning remains.
 The transport test used real HTTP/Redis-protocol sockets with simulated Redis.
@@ -47,6 +47,17 @@ but only 2/3 attempts passed. The original summary did not include the failing
 case, so no cause is claimed. The runner now prints bounded case-level details
 for the next diagnostic run. Earlier five-case smoke and RBAC stages in that
 same workflow passed.
+
+Diagnostic [run 36373009068](https://github.com/MAndersonASU/rackops/actions/runs/36373009068)
+again passed the five standalone cases and RBAC checks, then reproduced 2/3 in
+the serial evaluator. Healthy passed 300/300 and unsupported outage correctly
+escalated with 0/66 successful requests. The bad Redis-host case was
+misclassified as a broken image because old image revision history remained
+after earlier scenarios. The wrong repair failed independent verification,
+rollback was verified, and the outer checker observed 0/66 successes. The
+selected failure record is `results/evaluator-diagnostic-2026-09-28.json`.
+Current diagnosis uses current-Pod image state and current dependency logs;
+that fix still needs a live rerun.
 
 These are development runs, not a recovery-rate estimate. A prior run
 escalated incorrectly due a runbook rule that has since been fixed. Another

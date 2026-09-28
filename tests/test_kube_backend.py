@@ -203,8 +203,35 @@ def test_observed_history_drives_runbook_through_restricted_adapter():
             return httpx.Response(200, json=service_object("3", 8000))
         if request.url.path.endswith("/replicasets"):
             return httpx.Response(200, json=history)
-        if request.url.path.endswith("/events") or request.url.path.endswith("/pods"):
+        if request.url.path.endswith("/events"):
             return httpx.Response(200, json={"items": []})
+        if request.url.path.endswith("/log"):
+            return httpx.Response(400)
+        if request.url.path.endswith("/pods"):
+            return httpx.Response(
+                200,
+                json={
+                    "items": [
+                        {
+                            "metadata": {
+                                "name": "rackops-api-current",
+                                "labels": {"rackops.io/lab": "rackops"},
+                            },
+                            "spec": {
+                                "containers": [{"name": "api", "image": "rackops-api:missing"}]
+                            },
+                            "status": {
+                                "containerStatuses": [
+                                    {
+                                        "name": "api",
+                                        "state": {"waiting": {"reason": "ErrImageNeverPull"}},
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                },
+            )
         raise AssertionError(f"Unexpected API path: {request.url.path}")
 
     values = {}
@@ -234,6 +261,7 @@ def test_observed_history_drives_runbook_through_restricted_adapter():
         observed = backend.observe_for_runbook(gateway)
         assert observed.probe_passed
         assert not observed.rollout_ready
+        assert observed.image_pull_failure
         assert observed.prior_images == ("rackops-api:dev",)
         decision = run(gateway, observed)
     assert decision.root_cause == "broken_image"

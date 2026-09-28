@@ -243,6 +243,9 @@ class KubeBackend:
         ]
         if not items:
             return ""
+        items.sort(
+            key=lambda pod: pod.get("metadata", {}).get("creationTimestamp", ""), reverse=True
+        )
         name = items[0]["metadata"]["name"]
         if not name.startswith("rackops-api-"):
             raise PolicyDenied("Unexpected application Pod identity")
@@ -255,6 +258,32 @@ class KubeBackend:
             return response.text[:2000]
         except httpx.HTTPError:
             raise RuntimeError("Bounded application log read failed") from None
+
+    def current_image_pull_failure(self, image: str) -> bool:
+        """Inspect current-image Pods so stale namespace events cannot drive diagnosis."""
+        pods = self._request(
+            "GET",
+            f"/api/v1/namespaces/{NAMESPACE}/pods",
+            params={"labelSelector": "app=rackops-api", "limit": 20},
+        )
+        for pod in pods.get("items", [])[:20]:
+            metadata = pod.get("metadata", {})
+            containers = pod.get("spec", {}).get("containers", [])
+            if (
+                metadata.get("labels", {}).get("rackops.io/lab") != "rackops"
+                or len(containers) != 1
+                or containers[0].get("name") != "api"
+                or containers[0].get("image") != image
+            ):
+                continue
+            reasons = {
+                status.get("state", {}).get("waiting", {}).get("reason")
+                for status in pod.get("status", {}).get("containerStatuses", [])
+                if status.get("name") == "api"
+            }
+            if reasons & {"ErrImageNeverPull", "ImagePullBackOff", "ErrImagePull"}:
+                return True
+        return False
 
     def probe_application(self) -> dict:
         """Two real writes and reads; a short diagnostic, not final recovery proof."""
@@ -351,6 +380,8 @@ class KubeBackend:
             logs = self.read_logs(limit=30)
         except RuntimeError:
             logs = "Logs unavailable"
+        image_pull_failure = self.current_image_pull_failure(image)
+        redis_failure_observed = "dependency=redis operation_failed" in logs
         evidence = [
             gateway.add_evidence(
                 "deployment",
@@ -360,6 +391,7 @@ class KubeBackend:
                         "redis_host": host,
                         "container_port": container_port,
                         "rollout_ready": ready,
+                        "image_pull_failure": image_pull_failure,
                         "resource_version": app["metadata"]["resourceVersion"],
                     }
                 ),
@@ -391,4 +423,6 @@ class KubeBackend:
             image,
             prior_images,
             tuple(item.id for item in evidence),
+            image_pull_failure,
+            redis_failure_observed,
         )

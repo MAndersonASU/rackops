@@ -1,4 +1,4 @@
-"""Trusted operator commands, separate from the future runtime-agent gateway."""
+"""Trusted operator commands, separate from the runtime-agent gateway."""
 
 import argparse
 import json
@@ -83,11 +83,17 @@ def main() -> None:
         default="runbook",
         help="Hosted strategies require the explicit provider environment in .env.example",
     )
+    calibrate = sub.add_parser(
+        "calibrate-dev", help="Measure repeated healthy windows; does not freeze a criterion"
+    )
+    calibrate.add_argument("--runs", type=int, choices=range(3, 11), default=5)
     for command in ("smoke", "verify"):
         child = sub.add_parser(command)
         child.add_argument("--url", type=local_url, default="http://127.0.0.1:8000")
     lab = sub.add_parser("lab", help="Trusted operator/test-runner commands only")
-    lab.add_argument("action", choices=["up", "reset", "inject", "recover", "baseline", "down"])
+    lab.add_argument(
+        "action", choices=["up", "reset", "inject", "recover", "baseline", "metrics", "down"]
+    )
     lab.add_argument(
         "--scenario",
         choices=["bad_redis_host", "bad_service_port", "bad_image", "redis_outage", "healthy"],
@@ -134,6 +140,10 @@ def main() -> None:
             result = run_development(
                 Path("results/raw/development.jsonl"), args.scenario, args.strategy
             )
+        elif args.command == "calibrate-dev":
+            from rackops.calibration import run
+
+            result = run(Path("results/raw/calibration.json"), args.runs)
         elif args.command == "lab":
             from rackops.lab import run
 

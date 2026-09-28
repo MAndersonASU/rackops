@@ -17,6 +17,8 @@ class Observations:
     image: str
     prior_images: tuple[str, ...]
     evidence_ids: tuple[str, ...]
+    image_pull_failure: bool = False
+    redis_failure_observed: bool = False
 
 
 @dataclass(frozen=True)
@@ -32,16 +34,14 @@ def decide(observed: Observations) -> tuple[str, str | int | None, str | None]:
     """Return category, proposed value, and repair field from operational clues."""
     if observed.redis_replicas == 0:
         return "unsupported_dependency_outage", None, None
-    if not observed.rollout_ready and observed.prior_images:
-        return "broken_image", observed.prior_images[-1], "image"
     if observed.probe_passed and observed.rollout_ready:
         return "healthy", None, None
     if observed.service_target_port != observed.container_port:
         return "bad_service_target_port", observed.container_port, "target_port"
-    if observed.redis_host not in observed.prior_redis_hosts:
-        if observed.prior_redis_hosts:
-            return "bad_dependency_configuration", observed.prior_redis_hosts[-1], "redis_host"
-        return "unknown", None, None
+    if observed.image_pull_failure and observed.prior_images:
+        return "broken_image", observed.prior_images[-1], "image"
+    if observed.redis_failure_observed and observed.prior_redis_hosts:
+        return "bad_dependency_configuration", observed.prior_redis_hosts[-1], "redis_host"
     return "unknown", None, None
 
 

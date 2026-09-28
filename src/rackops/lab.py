@@ -226,6 +226,63 @@ def request_check(duration_seconds: int | None = None) -> dict:
         kube("delete", "job", name, "--ignore-not-found", "--wait=false", check=False)
 
 
+def metrics_check() -> dict:
+    """Verify the labeled in-cluster load is visible in Prometheus."""
+    name = "rackops-metrics-" + uuid.uuid4().hex[:8]
+    job = {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {"name": name, "namespace": NAMESPACE, "labels": LABEL},
+        "spec": {
+            "backoffLimit": 0,
+            "activeDeadlineSeconds": 45,
+            "ttlSecondsAfterFinished": 120,
+            "template": {
+                "metadata": {"labels": LABEL},
+                "spec": {
+                    "restartPolicy": "Never",
+                    "automountServiceAccountToken": False,
+                    "containers": [
+                        {
+                            "name": "metrics-check",
+                            "image": "rackops-api:dev",
+                            "imagePullPolicy": "Never",
+                            "command": ["python", "-m", "rackops.metrics_check"],
+                            "resources": {
+                                "requests": {"cpu": "25m", "memory": "64Mi"},
+                                "limits": {"cpu": "250m", "memory": "128Mi"},
+                            },
+                        }
+                    ],
+                },
+            },
+        },
+    }
+    kube("create", "-f", "-", input_data=json.dumps(job))
+    try:
+        deadline = time.monotonic() + 55
+        while time.monotonic() < deadline:
+            obj = json.loads(kube("get", "job", name, "-o", "json").stdout)
+            status = obj.get("status", {})
+            if status.get("succeeded") or status.get("failed"):
+                logs = kube("logs", f"job/{name}", "--tail=1").stdout
+                try:
+                    result = json.loads(logs)
+                except ValueError as exc:
+                    raise RuntimeError("Metrics check returned invalid output") from exc
+                if (
+                    type(result) is not dict
+                    or type(result.get("passed")) is not bool
+                    or result.get("metric") != "rackops_http_requests_total_rate"
+                ):
+                    raise RuntimeError("Metrics check returned an unexpected result")
+                return result
+            time.sleep(1)
+        raise RuntimeError("Metrics check Job did not finish")
+    finally:
+        kube("delete", "job", name, "--ignore-not-found", "--wait=false", check=False)
+
+
 def run_baseline_job() -> dict:
     """Trusted runner creates a restricted Pod; its code gets no runner credentials."""
     guard()
@@ -601,6 +658,9 @@ def run(
                 and (expected_repairs is None or result.get("repair_attempts") == expected_repairs)
             )
         return result
+    if action == "metrics":
+        guard()
+        return metrics_check()
     guard()
     if action == "reset":
         # Reset is a trusted runner operation, not an agent rollback.

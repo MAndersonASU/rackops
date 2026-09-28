@@ -1,8 +1,7 @@
-"""Small policy core for a future agent's typed tools.
+"""Policy core for the runtime agent's typed evidence and repair tools.
 
-An actual Kubernetes adapter and restricted service account are still required
-before any runtime agent can use this against the lab. This module never calls
-the trusted test runner or reads its scenario truth.
+The in-cluster adapter supplies a restricted service-account backend. This
+module never calls the trusted test runner or reads its scenario truth.
 """
 
 import json

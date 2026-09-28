@@ -79,6 +79,7 @@ After installing this package, use `rackops` with `.venv/Scripts` (Windows) or
 ```text
 rackops doctor
 rackops lab up
+rackops lab metrics
 rackops lab inject
 rackops lab baseline --expect verified_repair
 rackops lab recover
@@ -91,8 +92,16 @@ development scenarios serially using the runbook. Repeat `--scenario NAME` to
 select cases. It resets between attempts, performs a fresh 60-second trusted
 request check after the Job, and writes JSONL to ignored
 `results/raw/development.jsonl`.
-This command is not a held-out benchmark. Its first three-case CI execution
-completed with 2/3 passing; the next run emits per-case details for diagnosis.
+This command is not a held-out benchmark. Two three-case CI executions completed
+with 2/3 passing. The second identified stale image revision history causing a
+Redis-host fault misclassification; current-Pod status and dependency-log
+signals now replace that stale-history shortcut, pending a live rerun.
+
+Before any holdout, `rackops calibrate-dev --runs 5` records five complete
+healthy 60-second windows under ignored `results/raw/`. It recommends twice the
+worst healthy p95 latency with a 50 ms floor and labels the result
+`candidate_unfrozen`. Review and version that candidate separately; running the
+command alone does not freeze or authorize a benchmark criterion.
 
 `up` creates only the `rackops` cluster and refuses to adopt an existing one.
 `inject` accepts `--scenario bad_redis_host`, `bad_service_port`, `bad_image`,
@@ -100,7 +109,7 @@ completed with 2/3 passing; the next run emits per-case details for diagnosis.
 execution remains unverified. Injection requires a healthy baseline and checks
 that the injected fault manifests before returning. The image case records rollout failure and
 whether client requests also failed; these are separate outcomes.
-`recover` restores the recorded host with concurrent-change checks and validates
+`recover` restores the recorded pre-fault field with concurrent-change checks and validates
 requests. `baseline` creates a Job using the restricted `rackops-agent` service
 account; it uses operational clues and verifies any repair with a 60-second
 request window. The Job passed all five CI cases, and Kubernetes Role allow/deny

@@ -9,7 +9,10 @@ This is one CI lab smoke, not a held-out benchmark or an LLM comparison.
 Explicit Role allow/deny checks also passed in run 36371065150. The first live
 serial evaluator run 36371654019 completed three valid setups but passed 2/3;
 its original output omitted the failing case, so per-case diagnostics were
-added. Prometheus query contents, laptop setup, and hosted execution still need checks.
+added. Run 36373009068 reproduced the 2/3 result and showed stale image history
+caused the Redis-host misclassification. Diagnosis now uses current-Pod image
+status and current dependency logs, pending a live rerun. Prometheus query
+contents, laptop setup, and hosted execution still need checks.
 
 ## Environment facts
 
@@ -37,7 +40,7 @@ added. Prometheus query contents, laptop setup, and hosted execution still need 
 - Kubernetes uses Recreate so the broken-image scenario produced a user-facing
   outage in the first CI smoke. A different rollout strategy could keep old
   replicas serving and must be scored separately.
-- Lab CLI is a trusted operator tool, not the future restricted runtime gateway.
+- Lab CLI is a trusted operator tool, not the restricted runtime gateway.
   It must never be given to the runtime LLM.
 - Pilot checker: 5 HTTP requests/second, alternating PUT/GET, for 60 seconds;
   >=99% correct responses and p95 <=500 ms. Threshold is provisional and
@@ -80,6 +83,10 @@ added. Prometheus query contents, laptop setup, and hosted execution still need 
   request-check Job, and stores JSONL under ignored `results/raw/`. It has
   offline boundary tests. Run 36371654019 executed three valid cases and passed
   2/3; case-level diagnostics were added for the rerun.
+- `calibrate-dev` validates repeated complete healthy windows and writes an
+  ignored raw record plus an explicitly unfrozen threshold candidate. The fixed
+  formula is twice the worst healthy p95 with a 50 ms floor; no live calibration
+  has run and no final criterion is frozen.
 
 ## Checks and failures
 
@@ -139,7 +146,13 @@ added. Prometheus query contents, laptop setup, and hosted execution still need 
   Its new serial evaluator completed three valid attempts but passed 2/3. The
   summary did not expose which case failed, so the runner now includes each
   case's decision, independent-check metrics, and score. Current local suite:
-  **85 tests passed** with Ruff lint/format; no hosted API call was made.
+  **92 tests passed** with Ruff lint/format; no hosted API call was made.
+- Run 36373009068 on `4ab492d` again passed the standalone cases and RBAC,
+  then reproduced 2/3 in the serial evaluator. The bad Redis-host case was
+  misclassified from stale image history; its wrong repair failed independent
+  verification and rolled back. Healthy and unsupported cases passed. A
+  current-Pod/current-log regression fix now passes locally. Current local
+  suite: **93 tests passed**; live rerun pending.
 
 ## Budget and delivery
 

@@ -1,0 +1,38 @@
+{
+  "execution_mode": "github_actions_kind_evaluator",
+  "benchmark_eligible": false,
+  "source_run": "https://github.com/MAndersonASU/rackops/actions/runs/36373009068",
+  "commit": "4ab492d",
+  "scenario": "three_case_development_evaluator",
+  "attempts": 3,
+  "passed_attempts": 2,
+  "cases": [
+    {
+      "scenario": "bad_redis_host",
+      "decision": "escalated",
+      "reported_root_cause": "broken_image",
+      "expected_root_cause": "bad_dependency_configuration",
+      "repair_attempts": 1,
+      "independent_check": {"requests": 66, "successes": 0, "passed": false},
+      "passed": false
+    },
+    {
+      "scenario": "healthy",
+      "decision": "healthy_no_action",
+      "reported_root_cause": "healthy",
+      "repair_attempts": 0,
+      "independent_check": {"requests": 300, "successes": 300, "passed": true},
+      "passed": true
+    },
+    {
+      "scenario": "redis_outage",
+      "decision": "escalated",
+      "reported_root_cause": "unsupported_dependency_outage",
+      "repair_attempts": 0,
+      "independent_check": {"requests": 66, "successes": 0, "passed": false},
+      "passed": true
+    }
+  ],
+  "diagnosis": "Stale image revision history caused the runbook to misclassify the current Redis-host fault; independent verification rejected the wrong repair and rollback was verified.",
+  "limitations": "Known development cases only; no hosted model calls and no benchmark inference"
+}

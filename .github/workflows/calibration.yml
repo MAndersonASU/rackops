@@ -1,0 +1,25 @@
+name: healthy latency calibration
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: helm/kind-action@v1
+        with:
+          install_only: true
+      - run: python -m pip install -r requirements.lock
+      - run: python -m pip install --no-deps -e .
+      - run: rackops lab up
+      - run: rackops calibrate-dev --runs 5
+      - name: Show raw calibration evidence
+        if: always()
+        run: test -f results/raw/calibration.json && cat results/raw/calibration.json || true
+      - if: always()
+        run: rackops lab down

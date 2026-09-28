@@ -47,6 +47,14 @@ def _row(entry: dict) -> str:
         fault = _ratio(record.get("injected_fault"))
         recovered = _ratio(record.get("recovery_smoke"))
         outcome = record.get("runbook", {}).get("decision", "Unreported")
+    elif mode == "github_actions_kind_evaluator":
+        cases = record.get("cases", [])
+        healthy_case = next((case for case in cases if case.get("scenario") == "healthy"), {})
+        failed_case = next((case for case in cases if case.get("passed") is False), {})
+        healthy = _ratio(healthy_case.get("independent_check", {}))
+        fault = _ratio(failed_case.get("independent_check", {}))
+        recovered = "—"
+        outcome = f"{record.get('passed_attempts', 0)}/{record.get('attempts', 0)} attempts passed"
     else:
         healthy = fault = recovered = "—"
         outcome = "See selected record"
@@ -70,7 +78,9 @@ def _row(entry: dict) -> str:
 
 
 def render(records: list[dict]) -> str:
-    live = sum(entry["data"]["execution_mode"] == "github_actions_kind" for entry in records)
+    live = sum(
+        entry["data"]["execution_mode"].startswith("github_actions_kind") for entry in records
+    )
     fixture = sum(entry["data"]["execution_mode"] == "fixture" for entry in records)
     eligible = sum(entry["data"]["benchmark_eligible"] for entry in records)
     rows = "\n".join(_row(entry) for entry in records)
