@@ -6,6 +6,8 @@ Development verification on 2026-09-27: **62 pytest tests passed** in 11.38
 seconds on Windows/Python 3.12.14. Ruff lint and format checks and `pip check`
 passed. One upstream Starlette TestClient deprecation warning remains.
 The transport test used real HTTP/Redis-protocol sockets with simulated Redis.
+GitHub Actions fast checks also passed for commit `cbc07ef` (run 36368068846);
+the manual kind smoke job has not run.
 
 The first in-process fixture demonstration on 2026-09-27 observed:
 

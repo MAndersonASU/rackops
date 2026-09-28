@@ -9,7 +9,8 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
 
 ## Environment facts
 
-- Dedicated repository created; branch `main`; no remote or publication.
+- Dedicated repository created; branch `main` tracks the public
+  https://github.com/MAndersonASU/rackops remote.
 - Git 2.55.0 available. Python 3.12.14 from the desktop's bundled runtime used
   to create a project-local `.venv`; no system Python installation performed.
 - Approximately 31.5 GiB total RAM, 4.2 GiB free, 685.7 GiB free disk at discovery.
@@ -17,8 +18,9 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
   installation, outside PATH. Execution and directory reads return access denied,
   even after a folder-read permission grant. Linux container support is unverified.
 - `kind` and `kubectl` not on PATH. WSL status/list return access denied.
-- GitHub CLI is installed; its stored authentication failed validation.
-  Re-authentication must happen through `gh auth login`, never by pasting keys.
+- GitHub CLI authenticated as `MAndersonASU` through a device flow. Its token
+  is in the ignored local `work/gh-config` folder because this sandbox could
+  not write normal CLI settings. No token is in tracked files.
 
 ## Decisions
 
@@ -87,14 +89,14 @@ Prometheus scraping, runtime Role, and end-to-end repairs have not been run.
 ## Budget and delivery
 
 No API spending cap agreed; zero paid LLM calls and zero API spend.
-The owner authorized automatic GitHub publication on 2026-09-27. A public
-portfolio repository named `rackops` under the authenticated GitHub account is
-the selected default. GitHub login was initially invalid; the first device
-authorization could not be saved to the normal CLI configuration path. A second
-device login in an ignored project-local `work/gh-config` directory timed out
-before approval. GitHub authentication remains pending; generate a fresh device
-code after the next concrete local checkpoint.
-No GitHub repository or Git remote exists yet; do not claim publication until verified.
+The owner authorized automatic GitHub publication on 2026-09-27. Public
+repository `MAndersonASU/rackops` exists, with description, MIT license, and
+topics. Three local commits through `cbc07ef` were pushed to `main` and remote
+tracking verified. The first Git transport attempt failed under Windows
+Schannel; a CA bundle exported from the local Windows trust store allowed a
+verified TLS Git push using the existing GitHub CLI login. TLS verification
+stayed enabled. GitHub Actions `deterministic checks` completed successfully
+for `cbc07ef` (run 36368068846). The manually gated kind smoke job has not run.
 No cloud infrastructure provisioned. Source code is under MIT; no framework
 code was copied.
 
@@ -105,13 +107,13 @@ code was copied.
 2. Execute `rackops lab up`, `rackops lab inject`, `rackops lab recover`, and
    verify Prometheus data. Record actual output before accepting milestones 1–2.
 3. Run the restricted baseline Job and verify Role permissions/denials in the
-   live cluster. Then add a fake LLM provider and two LLM strategies before any
-   paid model selection or held-out evaluation.
+   live cluster. Then add hosted-model transport with a budget cap before any
+   paid evaluation and implement the independent experiment runner.
 
 ## Remaining project scope
 
 Hosted LLM transport for the structured/basic loops, full live runbook, runtime RBAC
 integration, healthy/unsupported live scoring, experiment runner, heldout
-evaluation, dashboard, final portfolio demo, GitHub publication, and CI
-execution are not complete. The evidence ledger and rollback core have offline
+evaluation, dashboard, and final portfolio demo are not complete. The evidence
+ledger and rollback core have offline
 tests only. Do not infer live success from fixtures or draft manifests.
