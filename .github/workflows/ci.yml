@@ -37,5 +37,13 @@ jobs:
       - run: rackops lab inject --scenario bad_service_port
       - run: rackops lab baseline --expect verified_repair --expect-cause bad_service_target_port
       - run: rackops lab recover
+      - run: rackops lab inject --scenario bad_image
+      - run: rackops lab baseline --expect verified_repair --expect-cause broken_image
+      - run: rackops lab recover
+      - run: rackops lab inject --scenario redis_outage
+      - run: rackops lab baseline --expect escalated --expect-cause unsupported_dependency_outage
+      - run: rackops lab recover
+      - run: rackops lab inject --scenario healthy
+      - run: rackops lab baseline --expect healthy_no_action --expect-cause healthy
       - if: always()
         run: rackops lab down
