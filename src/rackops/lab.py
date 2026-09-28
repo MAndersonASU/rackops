@@ -274,11 +274,23 @@ def scenario_resource(scenario):
 
 
 def wait_for_fault(scenario):
-    if scenario in {"bad_redis_host", "bad_image", "redis_outage"}:
-        name = "redis" if scenario == "redis_outage" else "rackops-api"
+    if scenario == "redis_outage":
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
+            obj = named_resource("deployment", "redis")
+            if (
+                obj["spec"]["replicas"] == 0
+                and obj.get("status", {}).get("observedGeneration", 0)
+                >= obj["metadata"].get("generation", 0)
+                and obj.get("status", {}).get("readyReplicas", 0) == 0
+            ):
+                return
+            time.sleep(1)
+        raise RuntimeError("Invalid setup: Redis still has ready replicas")
+    if scenario in {"bad_redis_host", "bad_image"}:
         kube(
             "wait",
-            f"deployment/{name}",
+            "deployment/rackops-api",
             "--for=condition=Available=false",
             "--timeout=60s",
             timeout=75,
@@ -390,7 +402,9 @@ def recover():
     }
 
 
-def run(action, scenario="bad_redis_host", expected=None, expected_cause=None):
+def run(
+    action, scenario="bad_redis_host", expected=None, expected_cause=None, expected_repairs=None
+):
     if action == "up":
         if (
             command(["docker", "info", "--format", "{{.OSType}}"], timeout=20).stdout.strip()
@@ -439,10 +453,12 @@ def run(action, scenario="bad_redis_host", expected=None, expected_cause=None):
         return recover()
     if action == "baseline":
         result = run_baseline_job()
-        if expected is not None or expected_cause is not None:
+        if expected is not None or expected_cause is not None or expected_repairs is not None:
             decision = result.get("decision", {})
-            result["passed"] = (expected is None or decision.get("status") == expected) and (
-                expected_cause is None or decision.get("root_cause") == expected_cause
+            result["passed"] = (
+                (expected is None or decision.get("status") == expected)
+                and (expected_cause is None or decision.get("root_cause") == expected_cause)
+                and (expected_repairs is None or result.get("repair_attempts") == expected_repairs)
             )
         return result
     guard()

@@ -184,6 +184,27 @@ def test_healthy_scenario_executes_no_field_mutation(monkeypatch, tmp_path):
     assert not (tmp_path / "incident.json").exists()
 
 
+def test_redis_outage_waits_for_zero_ready_replicas_not_available_condition(monkeypatch):
+    states = iter([1, 0])
+
+    def redis_deployment(kind, name):
+        assert (kind, name) == ("deployment", "redis")
+        return {
+            "metadata": {"generation": 2},
+            "spec": {"replicas": 0},
+            "status": {
+                "observedGeneration": 2,
+                "readyReplicas": next(states),
+                "conditions": [{"type": "Available", "status": "True"}],
+            },
+        }
+
+    monkeypatch.setattr(lab, "named_resource", redis_deployment)
+    monkeypatch.setattr(lab, "kube", lambda *a: pytest.fail("Must not wait on Available"))
+    monkeypatch.setattr(lab.time, "sleep", lambda *_: None)
+    lab.wait_for_fault("redis_outage")
+
+
 def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_path):
     monkeypatch.setattr(lab, "ROOT", tmp_path)
     monkeypatch.setattr(lab, "guard", lambda: None)
@@ -205,6 +226,7 @@ def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_
                             "status": "verified_repair",
                             "root_cause": "bad_dependency_configuration",
                         },
+                        "repair_attempts": 1,
                     }
                 )
                 + "\n"
@@ -213,10 +235,14 @@ def test_baseline_job_receives_only_namespaced_service_account(monkeypatch, tmp_
 
     monkeypatch.setattr(lab, "kube", fake_kube)
     result = lab.run(
-        "baseline", expected="verified_repair", expected_cause="bad_dependency_configuration"
+        "baseline",
+        expected="verified_repair",
+        expected_cause="bad_dependency_configuration",
+        expected_repairs=1,
     )
     assert result["passed"]
     assert not lab.run("baseline", expected_cause="broken_image")["passed"]
+    assert not lab.run("baseline", expected_repairs=0)["passed"]
     pod = created[0]["spec"]["template"]["spec"]
     assert pod["serviceAccountName"] == "rackops-agent"
     assert pod["automountServiceAccountToken"] is True

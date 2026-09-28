@@ -94,6 +94,12 @@ def main() -> None:
         ],
         help="Expected root-cause category for lab baseline (trusted runner check)",
     )
+    lab.add_argument(
+        "--expect-repairs",
+        type=int,
+        choices=[0, 1, 2],
+        help="Expected number of executed repairs for lab baseline",
+    )
     args = parser.parse_args()
     try:
         if args.command == "doctor":
@@ -110,6 +116,7 @@ def main() -> None:
                 scenario=args.scenario,
                 expected=args.expect,
                 expected_cause=args.expect_cause,
+                expected_repairs=args.expect_repairs,
             )
         else:
             with httpx.Client(
