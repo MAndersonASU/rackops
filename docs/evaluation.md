@@ -1,4 +1,4 @@
-# Evaluation protocol (held-out comparison not yet executed)
+# Evaluation protocol and frozen held-out comparison
 
 A five-case development smoke passed in GitHub Actions kind on 2026-09-28 UTC.
 It is not the holdout below. A trusted serial runner now implements separate
@@ -7,12 +7,12 @@ and two three-case live CI checks passed 2/3 attempts. Run 36373009068 identifie
 the failure: stale image revision history caused the runbook to misclassify a
 current Redis-host fault. Independent verification rejected the wrong repair and
 rollback succeeded. Diagnosis now uses current-Pod image status and current
-dependency logs; run 36374074466 then passed all 3/3 diagnostic cases. The LLM strategies have scripted tests
-and an offline-tested hosted transport. No hosted call or model comparison has occurred.
+dependency logs; run 36374074466 then passed all 3/3 diagnostic cases. The
+hosted pilot and frozen comparison subsequently ran with `gpt-6-sol`.
 
-Each attempt will start from a checked healthy baseline. The trusted test
-runner injects one fault and confirms it manifested before starting a strategy.
-It then lets that strategy observe, optionally repair, and stop or escalate.
+Each attempt started from a checked healthy baseline. The trusted test runner
+injected one fault and confirmed it manifested before starting a strategy. It
+then let that strategy observe, optionally repair, and stop or escalate.
 The independent checker measures real writes and reads, readiness, and rollout
 state. Finally, the runner resets the lab and checks readiness again.
 
@@ -43,8 +43,9 @@ attempts. Bounded fault values and API replica counts vary; the agent receives
 only operational evidence. Invalid setups are counted separately, never as
 agent successes.
 
-No holdout, model call, or paid experiment has happened yet. No model or
-budget has been selected. Hosted runs require an explicit key, model, current
+The frozen reduced holdout ran once in GitHub Actions run 36501829380 using
+`gpt-6-sol`, reasoning effort `none`, and the declared $2/$10 per-million-token
+input/output prices. Hosted runs require an explicit key, model, current
 input/output prices, and command-wide cap; an unknown-usage failure stops later
 calls. All published fixture output is marked ineligible for benchmark claims.
 The holdout runner records manifest, runtime implementation, and non-secret
@@ -54,3 +55,6 @@ forbidden actions, rollback outcomes, tool calls, tokens, and measured cost.
 Paid workflows are manual-only. A two-call development pilot is separate from
 the holdout. The holdout workflow has an explicit frozen-run gate, uses one
 command-wide cap, and uploads raw records for later sanitization and reporting.
+The completed holdout produced 60 valid attempts and 60 passes. Each strategy
+scored 20/20 root causes, 12/12 verified repairs, 4/4 healthy cases, and 4/4
+unsupported cases. Hosted holdout cost was $0.130076.

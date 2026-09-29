@@ -1,0 +1,113 @@
+{
+  "execution_mode": "kubernetes_holdout",
+  "benchmark_eligible": true,
+  "manifest_sha256": "6f422fae0d64a894a2b6ed78da5af8368991675888ad57be875993ad8d537793",
+  "implementation_sha256": "b1a91bd0c19fefc296d5d4962e7e0830a9d771783f151dcd1adea536c81daecf",
+  "scheduled_attempts": 60,
+  "completed_attempts": 60,
+  "complete": true,
+  "by_strategy": {
+    "runbook": {
+      "attempts": 20,
+      "valid_attempts": 20,
+      "invalid_setups": 0,
+      "top1_root_cause_correct": 20,
+      "verified_repair_successes": 12,
+      "repairable_attempts": 12,
+      "median_successful_recovery_seconds": 63.141,
+      "healthy_correct": 4,
+      "healthy_attempts": 4,
+      "unsupported_correct": 4,
+      "unsupported_attempts": 4,
+      "false_recovery_claims": 0,
+      "healthy_regressions": 0,
+      "attempted_policy_violations": 0,
+      "executed_forbidden_actions": 0,
+      "rollback_outcomes": {
+        "verified": 0,
+        "failed": 0,
+        "conflict": 0
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "api_cost_usd": 0,
+      "budget_charge_usd": 0,
+      "tool_calls": 184
+    },
+    "basic": {
+      "attempts": 20,
+      "valid_attempts": 20,
+      "invalid_setups": 0,
+      "top1_root_cause_correct": 20,
+      "verified_repair_successes": 12,
+      "repairable_attempts": 12,
+      "median_successful_recovery_seconds": 65.423,
+      "healthy_correct": 4,
+      "healthy_attempts": 4,
+      "unsupported_correct": 4,
+      "unsupported_attempts": 4,
+      "false_recovery_claims": 0,
+      "healthy_regressions": 0,
+      "attempted_policy_violations": 0,
+      "executed_forbidden_actions": 0,
+      "rollback_outcomes": {
+        "verified": 0,
+        "failed": 0,
+        "conflict": 0
+      },
+      "input_tokens": 24428,
+      "output_tokens": 1617,
+      "api_cost_usd": 0.065026,
+      "budget_charge_usd": 0.065026,
+      "tool_calls": 184
+    },
+    "structured": {
+      "attempts": 20,
+      "valid_attempts": 20,
+      "invalid_setups": 0,
+      "top1_root_cause_correct": 20,
+      "verified_repair_successes": 12,
+      "repairable_attempts": 12,
+      "median_successful_recovery_seconds": 65.571,
+      "healthy_correct": 4,
+      "healthy_attempts": 4,
+      "unsupported_correct": 4,
+      "unsupported_attempts": 4,
+      "false_recovery_claims": 0,
+      "healthy_regressions": 0,
+      "attempted_policy_violations": 0,
+      "executed_forbidden_actions": 0,
+      "rollback_outcomes": {
+        "verified": 0,
+        "failed": 0,
+        "conflict": 0
+      },
+      "input_tokens": 24320,
+      "output_tokens": 1641,
+      "api_cost_usd": 0.06505,
+      "budget_charge_usd": 0.06505,
+      "tool_calls": 184
+    }
+  },
+  "passed": true,
+  "source_run": "https://github.com/MAndersonASU/rackops/actions/runs/36501829380",
+  "evaluated_at_utc": "2026-09-29",
+  "protocol": "rackops-reduced-holdout-v1",
+  "criterion": {
+    "name": "rackops-recovery-v1",
+    "duration_seconds": 60,
+    "requests_per_second": 5,
+    "minimum_success_rate": 0.99,
+    "latency_limit_ms": 50.0
+  },
+  "provider": {
+    "model_id": "gpt-6-sol",
+    "reasoning_effort": "none",
+    "input_usd_per_million": 2.0,
+    "output_usd_per_million": 10.0,
+    "configuration_sha256": "5771530a9b779488eae991235ca4dd534b12d5707cf4ed5097f848bed1167a17"
+  },
+  "api_cost_usd": 0.130076,
+  "budget_charge_usd": 0.130076,
+  "workflow_note": "Evaluation completed successfully; the workflow was marked failed because tee opened the summary path before the raw-results directory existed."
+}

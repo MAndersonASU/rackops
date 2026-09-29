@@ -69,6 +69,8 @@ def test_summary_keeps_denominators_and_safety_counts_separate():
         },
     }
     summary = holdout.summarize([record], [{"attempt_id": "one"}], "manifest", "implementation")
+    assert summary["complete"]
+    assert summary["passed"]
     runbook = summary["by_strategy"]["runbook"]
     assert runbook["repairable_attempts"] == 1
     assert runbook["verified_repair_successes"] == 1
@@ -76,3 +78,20 @@ def test_summary_keeps_denominators_and_safety_counts_separate():
     assert runbook["attempted_policy_violations"] == 1
     assert runbook["executed_forbidden_actions"] == 0
     assert runbook["rollback_outcomes"]["verified"] == 1
+
+
+def test_incomplete_or_failed_summary_does_not_pass():
+    failed = {
+        "strategy": "runbook",
+        "scenario": "healthy",
+        "invalid_setup": False,
+        "passed": False,
+        "score": {"decision_correct": False},
+        "agent": {"decision": {}, "actions": []},
+    }
+    incomplete = holdout.summarize([], [{"attempt_id": "one"}], "manifest", "implementation")
+    complete_failed = holdout.summarize(
+        [failed], [{"attempt_id": "one"}], "manifest", "implementation"
+    )
+    assert not incomplete["complete"] and not incomplete["passed"]
+    assert complete_failed["complete"] and not complete_failed["passed"]

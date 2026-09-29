@@ -2,7 +2,13 @@
 
 ## Current milestone
 
-2026-09-27 (2026-09-28 UTC): a manually triggered GitHub Actions kind run
+2026-09-29 UTC: frozen holdout run 36501829380 completed all 60 scheduled
+attempts with valid setups and 60 passes. Each strategy scored 20/20 root
+causes, 12/12 verified repairs, 4/4 healthy cases, and 4/4 unsupported cases.
+Hosted holdout cost was $0.130076. The workflow status was failed only because
+`tee` opened its summary output before the directory existed; the artifact
+preserved all 60 records and the workflow defect is fixed. Earlier, a manually
+triggered GitHub Actions kind run
 (36370314133) passed all five development scenarios: three real repairs,
 unsupported escalation with zero repairs, and healthy no-op with zero repairs.
 This is one CI lab smoke, not a held-out benchmark or an LLM comparison.
@@ -14,8 +20,7 @@ caused the Redis-host misclassification. Diagnosis now uses current-Pod image
 status and current dependency logs. Run 36374074466 passed all 3/3 diagnostic
 cases and a live Prometheus rate query. Run 36374095023 completed five healthy
 calibration windows; their 3.502 ms worst p95 selected the declared 50 ms floor,
-which is frozen as `rackops-recovery-v1`. Laptop setup and hosted execution still
-need checks.
+which is frozen as `rackops-recovery-v1`. Laptop setup still needs checks.
 
 ## Environment facts
 
@@ -67,7 +72,7 @@ need checks.
 - In-cluster HTTP adapter and namespaced `rackops-agent` Role/RoleBinding;
   mock-transport tests pass. A real restricted Job handled all five scenarios
   in CI; explicit Role allow/deny checks passed in run 36371065150.
-  Hosted LLM strategy execution is implemented but has not run live.
+  Hosted LLM strategy execution completed in the pilot and frozen holdout.
 - A restricted runbook Job is wired to the operator CLI. After a proposed
   repair, its trusted checker waits for rollout readiness and probes real
   writes/reads for 60 seconds; all three repair paths passed in CI kind.
@@ -75,12 +80,12 @@ need checks.
   bounded OpenAI Responses transport uses strict schema output, `store: false`,
   retries, validated usage, pre-call budget reservation, and owner-supplied
   model/prices/cap. The trusted runner injects an ephemeral Secret into a
-  restricted Job. Transport and Job construction are offline-tested; zero paid
-  calls have been made.
+  restricted Job. Transport and Job construction are offline-tested and the
+  live hosted runs completed under the authorized cap.
 - Fast CI and manually gated kind smoke workflow; one full five-case smoke passed.
 - Static results dashboard generator reads selected JSON and labels replay,
-  fixture, live kind, and benchmark eligibility. Six selected records render;
-  no held-out benchmark results are present.
+  fixture, live kind, and benchmark eligibility. The selected frozen holdout
+  summary is included.
 - Trusted `evaluate-dev` runner resets between known scenarios, keeps hidden
   truth outside the runtime Job, scores its decision against a separate 60-second
   request-check Job, and stores JSONL under ignored `results/raw/`. It has
@@ -93,7 +98,7 @@ need checks.
 - The reduced holdout manifest is frozen at 10 configurations, 2 repetitions,
   and 3 strategies (60 scheduled attempts). Its deterministic schedule varies
   bounded fault values and API replicas, randomizes strategy order, and supports
-  only hash-matched resume. No holdout attempt has run.
+  only hash-matched resume. Run 36501829380 completed all 60 attempts.
 
 ## Checks and failures
 
@@ -170,10 +175,14 @@ need checks.
 - Run 36461878925 on `3609f08` passed the same live checks plus a separate
   two-replica development variation with a non-holdout Redis-host value. Its
   repair passed before the serial evaluator again completed 3/3.
+- Hosted pilot run 36501330861 passed a basic healthy case and a structured
+  Redis-host repair for $0.005368. Frozen holdout run 36501829380 then completed
+  60/60 attempts for $0.130076. Current local suite: **107 tests passed**.
 
 ## Budget and delivery
 
-No API spending cap agreed; zero paid LLM calls and zero API spend.
+The owner authorized a $5 total API cap and `gpt-6-sol`. The hosted pilot cost
+$0.005368 and the frozen holdout cost $0.130076, for $0.135444 total.
 The owner authorized automatic GitHub publication on 2026-09-27. Public
 repository `MAndersonASU/rackops` exists, with description, MIT license, and
 topics. `main` tracks the GitHub remote. The first Git transport attempt failed under Windows
@@ -187,15 +196,15 @@ code was copied.
 
 ## Next three actions
 
-1. Revalidate all live scenarios against frozen `rackops-recovery-v1`.
-2. After an explicit API cap and model configuration, execute the frozen reduced
-   holdout without tuning on its outcomes.
+1. Preserve the completed frozen holdout as final evidence; any tuning requires
+   a newly frozen holdout.
+2. Exercise live rollback-failure paths without using the completed holdout for
+   prompt changes.
 3. From a normal user terminal, confirm Docker Linux mode and WSL version;
    make Docker, kind, and kubectl available, then run `rackops doctor` locally.
 
 ## Remaining project scope
 
-Live hosted execution, held-out
-evaluation, dashboard refinement, and local laptop reproduction are incomplete.
+Local laptop reproduction remains incomplete.
 Rollback failure paths still need live checks. The evidence ledger and rollback
 core have offline tests. Do not infer benchmark or LLM success from smoke checks.

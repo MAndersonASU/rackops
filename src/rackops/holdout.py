@@ -233,14 +233,20 @@ def summarize(
             ),
             "tool_calls": sum(record.get("agent", {}).get("tool_calls", 0) for record in valid),
         }
+    complete = len(records) == len(schedule)
+    passed = complete and all(
+        record.get("passed") is True and record.get("invalid_setup") is not True
+        for record in records
+    )
     return {
         "execution_mode": "kubernetes_holdout",
-        "benchmark_eligible": len(records) == len(schedule),
+        "benchmark_eligible": complete,
+        "passed": passed,
         "manifest_sha256": manifest_hash,
         "implementation_sha256": implementation_hash,
         "scheduled_attempts": len(schedule),
         "completed_attempts": len(records),
-        "complete": len(records) == len(schedule),
+        "complete": complete,
         "by_strategy": by_strategy,
     }
 

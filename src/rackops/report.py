@@ -55,6 +55,22 @@ def _row(entry: dict) -> str:
         fault = _ratio(failed_case.get("independent_check", {}))
         recovered = "—"
         outcome = f"{record.get('passed_attempts', 0)}/{record.get('attempts', 0)} attempts passed"
+    elif mode == "kubernetes_holdout":
+        strategies = record.get("by_strategy", {})
+        summaries = [value for value in strategies.values() if type(value) is dict]
+        healthy_correct = sum(v.get("healthy_correct", 0) for v in summaries)
+        healthy_attempts = sum(v.get("healthy_attempts", 0) for v in summaries)
+        unsupported_correct = sum(v.get("unsupported_correct", 0) for v in summaries)
+        unsupported_attempts = sum(v.get("unsupported_attempts", 0) for v in summaries)
+        repair_successes = sum(v.get("verified_repair_successes", 0) for v in summaries)
+        repair_attempts = sum(v.get("repairable_attempts", 0) for v in summaries)
+        healthy = f"{healthy_correct}/{healthy_attempts}"
+        fault = f"{unsupported_correct}/{unsupported_attempts}"
+        recovered = f"{repair_successes}/{repair_attempts}"
+        outcome = (
+            f"{record.get('completed_attempts', 0)}/{record.get('scheduled_attempts', 0)} "
+            f"attempts passed; ${record.get('api_cost_usd', 0):.6f} API cost"
+        )
     else:
         healthy = fault = recovered = "—"
         outcome = "See selected record"
@@ -109,9 +125,9 @@ def render(records: list[dict]) -> str:
 </head>
 <body>
   <h1>RackOps selected results</h1>
-  <p class="notice">Development evidence only. This page replays selected records;
-    opening it does not run a lab or an agent. Fixture data and live kind checks
-    are labeled separately. No LLM comparison or held-out benchmark is reported.</p>
+  <p class="notice">This page replays selected records; opening it does not run a
+    lab or an agent. Development, fixture, and frozen held-out evidence are labeled
+    separately. Benchmark eligibility applies only to the frozen holdout summary.</p>
   <div class="cards">
     <div class="card"><strong>{len(records)}</strong>selected records</div>
     <div class="card"><strong>{live}</strong>live kind records</div>
@@ -124,8 +140,8 @@ def render(records: list[dict]) -> str:
     <th>Source</th></tr></thead>
     <tbody>{rows}</tbody>
   </table></div>
-  <p>Counts are request checks from selected summaries. A single smoke run is
-    not a recovery-rate estimate.</p>
+  <p>Counts are request checks or attempt totals from selected summaries. Development
+    smoke runs are not recovery-rate estimates.</p>
 </body>
 </html>
 """

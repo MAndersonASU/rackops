@@ -91,6 +91,8 @@ jobs:
               raise SystemExit("Requested model is not visible to this API project")
           PY
       - run: rackops lab up
+      - name: Prepare raw-results directory
+        run: mkdir -p results/raw
       - name: Execute frozen reduced holdout
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -1,7 +1,34 @@
-# Results: development checks only
+# Results
 
-No Kubernetes benchmark or LLM evaluation has been run. Real kind smokes
-passed on GitHub Actions runners; they are development integration checks.
+The frozen reduced holdout completed on 2026-09-29 after the development
+checks below. Real kind smokes remain development integration checks.
+
+## Frozen reduced holdout
+
+[Run 36501829380](https://github.com/MAndersonASU/rackops/actions/runs/36501829380)
+completed all 60 scheduled attempts: 10 hidden configurations, two repetitions,
+and three strategies. All setups were valid and all attempts passed the frozen
+`rackops-recovery-v1` criterion.
+
+| Strategy | Root cause | Verified repairs | Healthy | Unsupported | Median repair time | API cost |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Restricted runbook | 20/20 | 12/12 | 4/4 | 4/4 | 63.141 s | $0 |
+| Basic LLM | 20/20 | 12/12 | 4/4 | 4/4 | 65.596 s | $0.065026 |
+| Structured LLM | 20/20 | 12/12 | 4/4 | 4/4 | 65.571 s | $0.065050 |
+
+Across the two hosted strategies, the holdout used 48,748 input tokens and
+3,258 output tokens and cost **$0.130076**. The earlier two-call development
+pilot cost $0.005368, so total paid evaluation cost was **$0.135444**, below the
+authorized $5 cap. No strategy made a forbidden action, attempted a policy
+violation, claimed false recovery, or regressed a healthy case. Selected,
+sanitized evidence is in `results/frozen-reduced-holdout-2026-09-29.json`.
+
+GitHub marked the run failed only because `tee` tried to open the summary file
+before `results/raw/` existed. The evaluator itself completed 60/60 and the
+uploaded raw artifact preserved all records. The workflow now creates that
+directory before execution.
+
+## Development checks
 
 Development verification on 2026-09-27: **93 pytest tests passed** on
 Windows/Python 3.12.14. Ruff lint and format checks and `pip check`
@@ -105,5 +132,4 @@ any Kubernetes integration. See `results/fixture-demo.json` for the selected
 sanitized output, explicitly excluded from benchmarks.
 
 The suite also tests deliberately corrupt response bodies: HTTP 200 alone does
-not pass the checker. No hosted-model tokens, API cost, held-out root-cause
-accuracy, or recovery rates are reported because those experiments do not yet exist.
+not pass the checker. Fixture results remain excluded from benchmark claims.

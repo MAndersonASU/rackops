@@ -1,11 +1,10 @@
 # RackOps
 
 An evidence-grounded incident-response experiment for a disposable local
-Kubernetes lab. **Work in progress:** all three repairable fault families,
-unsupported escalation, and healthy no-op passed in one real GitHub Actions
-kind smoke. A hosted-provider path now exists for the two LLM strategies, but
-it has only offline transport tests. The LLM comparison and held-out benchmark
-are unfinished.
+Kubernetes lab. All three repairable fault families, unsupported escalation,
+and healthy no-op passed in real GitHub Actions kind runs. The frozen 60-attempt
+comparison of a deterministic runbook and two hosted LLM strategies also
+completed; see [the selected results](docs/results.md).
 
 The application stores short-lived values in Redis. The checker sends real
 writes and reads and checks exact responses. The intended question is whether
@@ -170,7 +169,8 @@ The cap reserves every allowed retry before the first request. Returned token
 usage and its priced cost are recorded. An ambiguous retry is conservatively
 charged at its full reservation and marked as an incomplete cost observation; a
 failed Job with unknown usage stops subsequent calls. These are development
-runs and remain benchmark-ineligible. Zero paid calls have been made so far.
+runs and remain benchmark-ineligible. The completed two-call hosted pilot cost
+$0.005368.
 
 The reduced held-out comparison is frozen in
 `evaluation/reduced-holdout-v1.json`. It contains six repairable, two healthy,
@@ -186,8 +186,10 @@ environment is configured, the manual command is:
 rackops evaluate-holdout
 ```
 
-The holdout has not been executed. Do not inspect its outcomes and tune prompts;
-doing so converts it to development data and requires a new holdout.
+The holdout was executed once in GitHub Actions run 36501829380. All 60 valid
+attempts passed; the hosted strategies cost $0.130076. Its outcomes are now
+final evidence. Any prompt or policy tuning based on them requires freezing a
+new holdout before making another benchmark claim.
 The manual `hosted strategy pilot` workflow first exercises one basic healthy
 case and one structured repair case. The separate `frozen reduced holdout`
 workflow requires an explicit `yes` gate and uploads ignored raw records as a
@@ -210,9 +212,9 @@ not a real Redis integration test. [Results](docs/results.md) report actual chec
 
 The independent checker uses frozen criterion `rackops-recovery-v1`: 5 requests
 per second for 60 seconds, at least 99% correct responses, and p95 latency at
-most 50 ms. `lab recover` uses a short smoke check, not that full window. No
-held-out repair-success percentage, cost comparison, or production reliability
-claim is currently justified. Full held-out scoring remains a later milestone.
+most 50 ms. `lab recover` uses a short smoke check, not that full window. The
+selected holdout summary supports only the bounded lab results reported in
+`docs/results.md`; it does not establish production reliability.
 
 Build the local selected-results dashboard from the checked-in JSON summaries:
 
