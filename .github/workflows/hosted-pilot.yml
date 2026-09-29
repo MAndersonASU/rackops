@@ -57,6 +57,42 @@ jobs:
           if not math.isfinite(value) or value <= 0:
               raise SystemExit("budget_usd must be finite and positive")
           PY
+      - name: Verify requested model access without a paid generation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          REQUESTED_MODEL: ${{ inputs.model }}
+        run: |
+          python - <<'PY'
+          import json, os
+          import httpx
+
+          allowed = {
+              "gpt-6-astra",
+              "gpt-6-sol",
+              "gpt-6-luna",
+              "gpt-5.6-sol",
+              "gpt-5.6-terra",
+              "gpt-5.6-luna",
+              "gpt-5.5",
+          }
+          response = httpx.get(
+              "https://api.openai.com/v1/models",
+              headers={"Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}"},
+              timeout=30,
+              trust_env=False,
+          )
+          if response.status_code != 200:
+              raise SystemExit(f"Model access check failed with HTTP {response.status_code}")
+          body = response.json()
+          visible = sorted(
+              item["id"]
+              for item in body.get("data", [])
+              if type(item) is dict and item.get("id") in allowed
+          )
+          print("Visible RackOps candidate models: " + json.dumps(visible))
+          if os.environ["REQUESTED_MODEL"] not in visible:
+              raise SystemExit("Requested model is not visible to this API project")
+          PY
       - run: rackops lab up
       - name: Run one basic and one structured development case
         env:
